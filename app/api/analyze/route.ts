@@ -7,6 +7,7 @@ import { buildSummary } from "@/lib/services/analytics";
 import { generateInsights } from "@/lib/services/openai";
 import { analyzeFromRawRows, analyzeFromRecords } from "@/lib/services/insights";
 import { mapRowsToRecords } from "@/lib/services/parser";
+import { isDatabaseUnavailableError } from "@/lib/db-errors";
 
 export async function POST(req: NextRequest) {
   try {
@@ -75,7 +76,10 @@ export async function POST(req: NextRequest) {
 
     const { summary, insights, profile } = await analyzeFromRawRows(rawRows, prompt);
     return ok({ summary, insights, profile });
-  } catch {
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return fail("Database is temporarily unavailable. Please try again shortly.", 503);
+    }
     return fail("Analyze failed", 500);
   }
 }
