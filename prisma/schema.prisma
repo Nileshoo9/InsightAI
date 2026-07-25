@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  files     File[]
+  insights  Insight[]
+}
+
+model File {
+  id         String      @id @default(cuid())
+  userId     String
+  fileName   String
+  uploadedAt DateTime    @default(now())
+  rawPreview Json?
+  rawRowCount Int        @default(0)
+  user       User        @relation(fields: [userId], references: [id])
+  records    DataRecord[]
+  insights   Insight[]
+}
+
+model DataRecord {
+  id        String   @id @default(cuid())
+  fileId    String
+  date      DateTime
+  revenue   Float
+  product   String
+  quantity  Int
+  category  String?
+  customer  String?
+  file      File     @relation(fields: [fileId], references: [id])
+}
+
+model Insight {
+  id           String   @id @default(cuid())
+  userId       String
+  fileId       String
+  insightsText String
+  insightsJson String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+  file         File     @relation(fields: [fileId], references: [id])
+}
