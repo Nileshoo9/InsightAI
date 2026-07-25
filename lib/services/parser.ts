@@ -29,15 +29,29 @@ function parseNumber(value: unknown, fallback = 0) {
 }
 
 function parseDate(value: unknown) {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    if (y >= 1990 && y <= 2100) return value;
+    return null;
+  }
   const text = String(value ?? "").trim();
   if (!text) return null;
+
+  // Attempt standard date parsing
   const d = new Date(text);
-  if (!Number.isNaN(d.getTime())) return d;
-  const excelSerial = Number(text);
-  if (Number.isFinite(excelSerial) && excelSerial > 59) {
-    return new Date(Math.round((excelSerial - 25569) * 86400 * 1000));
+  if (!Number.isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    if (y >= 1990 && y <= 2100) return d;
   }
+
+  // Attempt Excel serial date parsing with sane bounds
+  const excelSerial = Number(text);
+  if (Number.isFinite(excelSerial) && excelSerial >= 25569 && excelSerial <= 90000) {
+    const converted = new Date(Math.round((excelSerial - 25569) * 86400 * 1000));
+    const y = converted.getUTCFullYear();
+    if (y >= 1990 && y <= 2100) return converted;
+  }
+
   return null;
 }
 

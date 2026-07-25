@@ -26,7 +26,14 @@ export async function buildSummary(records: ParsedRecord[]): Promise<AggregatedS
   
   for (const col of columns) {
     const vals = records.slice(0, 100).map(r => r[col]);
-    const numCount = vals.filter(v => typeof v === "number" || (typeof v === "string" && !isNaN(Number(v.replace(/[^0-9.-]+/g, ""))))).length;
+    const numCount = vals.filter(v => {
+      if (typeof v === "number") return true;
+      if (typeof v === "string") {
+        const stripped = v.replace(/[^0-9.-]+/g, "");
+        return stripped !== "" && !isNaN(Number(stripped));
+      }
+      return false;
+    }).length;
     if (numCount > vals.length * 0.8) {
       numericCols.push(col);
     } else {
@@ -42,7 +49,7 @@ export async function buildSummary(records: ParsedRecord[]): Promise<AggregatedS
 
   // Calculate top entries
   const topEntries = categoricalCols
-    .filter(col => uniqueValues[col] > 1 && uniqueValues[col] < totalRecords * 0.5)
+    .filter(col => uniqueValues[col] > 1 && (uniqueValues[col] < totalRecords * 0.95 || totalRecords < 10))
     .slice(0, 3)
     .map(col => {
       const counts: Record<string, number> = {};

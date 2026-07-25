@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { fail, ok } from "@/lib/http";
 import { getSessionFromRequest } from "@/lib/auth";
 import { generateWithModelFallback, extractJsonObject } from "@/lib/services/openai";
+import { isDatabaseUnavailableError } from "@/lib/db-errors";
 
 function fallbackAnswer(question: string, dataContext: Record<string, any>): { answer: string; suggestedAction: string } {
   const summary = dataContext?.summary;
@@ -121,6 +122,9 @@ Response format: Return ONLY valid JSON.
       suggestedAction: String(parsed.suggestedAction || "Narrow the question to a specific metric, date range, or segment.")
     });
   } catch (err) {
+    if (isDatabaseUnavailableError(err)) {
+      return fail("Database is temporarily unavailable. Please try again shortly.", 503);
+    }
     console.error("NLQ Error:", err);
     return fail("Failed to process query", 500);
   }

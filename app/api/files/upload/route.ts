@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fail, ok } from "@/lib/http";
 import { requireAuth } from "@/lib/require-auth";
+import { isDatabaseUnavailableError } from "@/lib/db-errors";
 import {
   mapRowsToRecords,
   parseCsvRows,
@@ -90,6 +91,9 @@ export async function POST(req: NextRequest) {
       rawRowCount: rawRows.length
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return fail("Database is temporarily unavailable. Please try again shortly.", 503);
+    }
     const message = error instanceof Error ? error.message : "Failed to upload file";
     return fail(message, 500);
   }
