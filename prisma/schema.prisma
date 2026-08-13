@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  files     File[]
+  insights  Insight[]
+  datasets  Dataset[]
+}
+
+model File {
+  id          String      @id @default(cuid())
+  userId      String
+  fileName    String
+  uploadedAt  DateTime    @default(now())
+  rawPreview  Json?
+  rawRowCount Int         @default(0)
+  user        User        @relation(fields: [userId], references: [id])
+  records     DataRecord[]
+  insights    Insight[]
+  // linkage for the new dataset model
+  datasetFile DatasetFile?
+}
+
+// Legacy sales-specific records (kept for backward compatibility)
+model DataRecord {
+  id        String   @id @default(cuid())
+  fileId    String
+  date      DateTime
+  revenue   Float
+  product   String
+  quantity  Int
+  category  String?
+  customer  String?
+  file      File     @relation(fields: [fileId], references: [id])
+}
+
+// New generic dataset models
+model Dataset {
+  id          String         @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  sourceType  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  files       DatasetFile[]
+  versions    DatasetVersion[]
+  user        User           @relation(fields: [userId], references: [id])
+}
+
+model DatasetFile {
+  id           String   @id @default(cuid())
+  datasetId    String
+  fileId       String   @unique
+  mimeType     String?
+  fileSize     Int?
+  storagePath  String?
+  uploadedAt   DateTime @default(now())
+
+  dataset      Dataset  @relation(fields: [datasetId], references: [id])
+  file         File     @relation(fields: [fileId], references: [id])
+}
+
+model DatasetVersion {
+  id               String     @id @default(cuid())
+  datasetId        String
+  version          Int        @default(1)
+  rowCount         Int        @default(0)
+  columnCount      Int        @default(0)
+  status           String     @default("ready")
+  createdAt        DateTime   @default(now())
+
+  dataset          Dataset    @relation(fields: [datasetId], references: [id])
+  columns          Column[]
+  analysisRuns     AnalysisRun[]
+  cleaningActions  CleaningAction[]
+}
+
+model Column {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  name             String
+  displayName      String?
+  dataType         String?
+  semanticType     String?
+  nullable         Boolean  @default(true)
+  uniqueCount      Int      @default(0)
+  missingCount     Int      @default(0)
+  minValue         String?
+  maxValue         String?
+  meanValue        Float?
+  medianValue      Float?
+  createdAt        DateTime @default(now())
+
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id])
+}
+
+model AnalysisRun {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  objective        String?
+  status           String   @default("pending")
+  startedAt        DateTime?
+  completedAt      DateTime?
+  modelUsed        String?
+
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id])
+  kpis             KPI[]
+  charts           Chart[]
+  insights         Insight[]
+  cleaningActions  CleaningAction[]
+  reports          Report[]
+}
+
+model KPI {
+  id            String   @id @default(cuid())
+  analysisRunId String
+  name          String
+  value         String
+  unit          String?
+  formula       String?
+  description   String?
+
+  analysisRun   AnalysisRun @relation(fields: [analysisRunId], references: [id])
+}
+
+model Chart {
+  id            String   @id @default(cuid())
+  analysisRunId String
+  chartType     String
+  title         String?
+  xColumn       String?
+  yColumn       String?
+  configJson    Json?
+
+  analysisRun   AnalysisRun @relation(fields: [analysisRunId], references: [id])
+}
+
+model Insight {
+  id           String   @id @default(cuid())
+  userId       String
+  fileId       String?
+  analysisRunId String?
+  type         String?
+  severity     String?
+  title        String?
+  description  String
+  insightsText String?
+  insightsJson Json?
+  evidenceJson Json?
+  confidence   Float?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+  file         File?    @relation(fields: [fileId], references: [id])
+  analysisRun  AnalysisRun? @relation(fields: [analysisRunId], references: [id])
+}
+
+model CleaningAction {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  analysisRunId    String?
+  columnName       String
+  operation        String
+  beforeCount      Int?
+  afterCount       Int?
+  details          Json?
+
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id])
+  analysisRun      AnalysisRun?   @relation(fields: [analysisRunId], references: [id])
+}
+
+model Report {
+  id            String   @id @default(cuid())
+  analysisRunId String
+  format        String
+  fileUrl       String
+  createdAt     DateTime @default(now())
+
+  analysisRun   AnalysisRun @relation(fields: [analysisRunId], references: [id])
+}
