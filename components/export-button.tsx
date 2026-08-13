@@ -8,7 +8,7 @@ import {
   Loader2,
   FileText,
   FileTextIcon
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 type ExportData = {
   insightId: string;
@@ -43,12 +43,6 @@ function formatDate(value?: string) {
   return d.toLocaleString();
 }
 
-function addMultilineText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight = 16) {
-  const lines = doc.splitTextToSize(text, maxWidth);
-  doc.text(lines, x, y);
-  return y + lines.length * lineHeight;
-}
-
 export function ExportButton({ data }: { data: ExportData }) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -66,16 +60,10 @@ export function ExportButton({ data }: { data: ExportData }) {
       ...(data.alerts || []).map((al, idx): [string, string, string | number] => ["Alert", `Alert ${idx + 1}`, al])
     ];
 
-    // If insights appear minimal, include a top-line notice so consumers can see why CSV may look sparse
-    const isMinimal = data.insights.length === 0 || data.insights.every((s) => String(s).trim().length < 20);
-    const csvRows: string[] = [];
-    if (isMinimal) {
-      csvRows.push(`"AI_INSIGHTS_STATUS","Limited or fallback insights generated; AI may have been unable to produce full analysis"`);
-    }
-    csvRows.push(headers.join(","));
-    csvRows.push(...rows.map((e) => e.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")));
-
-    const csvContent = csvRows.join("\n");
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((e) => e.map((cell) => `"${String(cell).replace(/"/g, "\"\"")}"`).join(","))
+    ].join("\n");
 
     downloadBlob(csvContent, "text/csv;charset=utf-8;", `${fileBase}_insight_report.csv`);
     setTimeout(() => {
@@ -166,97 +154,67 @@ ${(data.opportunities || []).length ? (data.opportunities || []).map((o) => `- $
           y: 0.5,
           color: "22C55E",
           fontSize: 24,
-          bold: true,
-          align: "left"
+          bold: true
         });
-
-        // Paginate metrics if there are many
-        const metricsPerSlide = 8;
-        for (let s = 0; s < Math.ceil(data.metrics.length / metricsPerSlide); s++) {
-          const slice = data.metrics.slice(s * metricsPerSlide, (s + 1) * metricsPerSlide);
-          const slide = s === 0 ? slideStats : pres.addSlide();
-          slice.forEach((m, i) => {
-            slide.addText(`${m.label}: ${m.value}`, {
-              x: 0.9,
-              y: 1.1 + i * 0.6,
-              w: 8.2,
-              fontSize: 14,
-              color: "E2E8F0",
-              bullet: { indent: 10 },
-              autoFit: true
-            });
+        data.metrics.slice(0, 8).forEach((m, i) => {
+          slideStats.addText(`${m.label}: ${m.value}`, {
+            x: 0.9,
+            y: 1.3 + i * 0.52,
+            w: 8.2,
+            fontSize: 14,
+            color: "E2E8F0",
+            bullet: { indent: 10 }
           });
-        }
+        });
       }
 
       if (data.insights.length > 0) {
-        // Split insights across slides to avoid overflow
-        const itemsPerSlide = 6;
-        for (let s = 0; s < Math.ceil(data.insights.length / itemsPerSlide); s++) {
-          const slide = pres.addSlide();
-          slide.background = { fill: "0F172A" };
-          slide.addText("Strategic Insights", { x: 0.6, y: 0.5, color: "38BDF8", fontSize: 24, bold: true });
-          const slice = data.insights.slice(s * itemsPerSlide, (s + 1) * itemsPerSlide);
-          slice.forEach((insight, i) => {
-            slide.addText(insight, {
-              x: 0.8,
-              y: 1.2 + i * 0.55,
-              w: 8.6,
-              fontSize: 13,
-              color: "E2E8F0",
-              bullet: { indent: 10 },
-              autoFit: true
-            });
+        const slide2 = pres.addSlide();
+        slide2.background = { fill: "0F172A" };
+        slide2.addText("Strategic Insights", { x: 0.6, y: 0.5, color: "38BDF8", fontSize: 24, bold: true });
+        data.insights.slice(0, 6).forEach((insight, i) => {
+          slide2.addText(insight, {
+            x: 0.8,
+            y: 1.2 + i * 0.6,
+            w: 8.6,
+            fontSize: 13,
+            color: "E2E8F0",
+            bullet: { indent: 10 }
           });
-        }
+        });
       }
 
       if (data.recommendations.length > 0 || data.risks.length > 0) {
-        // Recommendations and risks placed across columns; paginate vertically as needed
-        const recs = data.recommendations || [];
-        const risks = data.risks || [];
-        const perColumn = 8;
-        const totalSlides = Math.max(Math.ceil(recs.length / perColumn), Math.ceil(risks.length / perColumn), 1);
-
-        for (let s = 0; s < totalSlides; s++) {
-          const slide3 = pres.addSlide();
-          slide3.background = { fill: "111827" };
-          slide3.addText("Action Plan & Risks", { x: 0.6, y: 0.5, color: "F59E0B", fontSize: 24, bold: true });
-          slide3.addText("Recommended Actions", { x: 0.8, y: 1.1, color: "10B981", fontSize: 13, bold: true });
-
-          const recSlice = recs.slice(s * perColumn, (s + 1) * perColumn);
-          recSlice.forEach((rec, i) => {
-            slide3.addText(rec, {
-              x: 1.0,
-              y: 1.45 + i * 0.42,
-              w: 4.0,
-              fontSize: 11,
-              color: "D1D5DB",
-              bullet: { indent: 8 },
-              autoFit: true
-            });
+        const slide3 = pres.addSlide();
+        slide3.background = { fill: "111827" };
+        slide3.addText("Action Plan & Risks", { x: 0.6, y: 0.5, color: "F59E0B", fontSize: 24, bold: true });
+        slide3.addText("Recommended Actions", { x: 0.8, y: 1.1, color: "10B981", fontSize: 13, bold: true });
+        data.recommendations.slice(0, 4).forEach((rec, i) => {
+          slide3.addText(rec, {
+            x: 1.0,
+            y: 1.45 + i * 0.45,
+            w: 4.0,
+            fontSize: 11,
+            color: "D1D5DB",
+            bullet: { indent: 8 }
           });
-
-          slide3.addText("Risks / Constraints", { x: 5.1, y: 1.1, color: "EF4444", fontSize: 13, bold: true });
-          const riskSlice = risks.slice(s * perColumn, (s + 1) * perColumn);
-          riskSlice.forEach((risk, i) => {
-            slide3.addText(risk, {
-              x: 5.3,
-              y: 1.45 + i * 0.42,
-              w: 4.0,
-              fontSize: 11,
-              color: "D1D5DB",
-              bullet: { indent: 8 },
-              autoFit: true
-            });
+        });
+        slide3.addText("Risks / Constraints", { x: 5.1, y: 1.1, color: "EF4444", fontSize: 13, bold: true });
+        data.risks.slice(0, 4).forEach((risk, i) => {
+          slide3.addText(risk, {
+            x: 5.3,
+            y: 1.45 + i * 0.45,
+            w: 4.0,
+            fontSize: 11,
+            color: "D1D5DB",
+            bullet: { indent: 8 }
           });
-        }
+        });
       }
 
       await pres.writeFile({ fileName: `${fileBase}_executive_report.pptx` });
     } catch (err) {
       console.error("PPTX Export Error:", err);
-      try { window.alert("PPTX export failed. See console for details."); } catch (e) { /* ignore */ }
     }
 
     setExporting(null);
@@ -270,55 +228,35 @@ ${(data.opportunities || []).length ? (data.opportunities || []).map((o) => `- $
     await new Promise((r) => setTimeout(r, 350));
 
     try {
+      const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
 
-      const title = `Executive Report - ${data.fileName}`;
-      const meta = [
-        `Domain: ${data.domainName || "Business Dataset"}`,
-        `Generated: ${formatDate(data.generatedAt)}`
-      ];
-      const contentLines = [
-        data.executiveSummary || "Summary unavailable for this report.",
-        "",
-        "Key Metrics",
-        ...data.metrics.slice(0, 8).map((m) => `- ${m.label}: ${m.value}`),
-        "",
-        "Key Insights",
-        ...data.insights.slice(0, 6).map((item) => `- ${item}`),
-        "",
-        "Recommendations",
-        ...data.recommendations.slice(0, 6).map((item) => `- ${item}`),
-        "",
-        "Risks",
-        ...data.risks.slice(0, 6).map((item) => `- ${item}`)
-      ];
+      const element = (document.querySelector(".app-main") || document.querySelector("main") || document.body) as HTMLElement;
+      if (!element) throw new Error("Target element not found");
 
-      pdf.setFontSize(18);
-      pdf.text(title, 40, 40);
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100);
-      meta.forEach((line, index) => pdf.text(line, 40, 62 + index * 14));
+      // Force a light-theme capture mode for the PDF
+      document.body.classList.add("is-capturing", "pdf-export-mode");
 
-      pdf.setTextColor(0, 0, 0);
-      let cursorY = 100;
-      pdf.setFontSize(11);
-      contentLines.forEach((line) => {
-        if (!line.trim()) {
-          cursorY += 8;
-          return;
-        }
-        const wrapped = pdf.splitTextToSize(line, 520);
-        pdf.text(wrapped, 40, cursorY);
-        cursorY += wrapped.length * 12 + 2;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false
       });
 
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: [canvas.width / 2, canvas.height / 2]
+      });
+
+      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width / 2, canvas.height / 2);
       pdf.save(`${fileBase}_visual_report.pdf`);
     } catch (err) {
       console.error("PDF Export Error:", err);
-      // Surface a visible error so the user knows export failed
-      try { window.alert("PDF export failed. See console for details."); } catch (e) { /* ignore in SSR */ }
     } finally {
+      document.body.classList.remove("is-capturing", "pdf-export-mode");
       setExporting(null);
     }
   };

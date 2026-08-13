@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/client-api";
-import { X, Loader2, FileSpreadsheet } from "lucide-react/dist/cjs/lucide-react.js";
+import { X, Loader2, FileSpreadsheet } from "lucide-react";
 
 type Props = {
   fileId: string;

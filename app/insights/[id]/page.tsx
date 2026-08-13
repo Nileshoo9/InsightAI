@@ -58,31 +58,20 @@ async function getInsight(userId: string, id: string) {
   } | null;
 
   let parsedJson: InsightData = null;
-  if (insight.insightsJson && typeof insight.insightsJson === "object") {
-    parsedJson = insight.insightsJson as InsightData;
-  } else if (typeof insight.insightsJson === "string") {
+  if (insight.insightsJson) {
     try {
       parsedJson = JSON.parse(insight.insightsJson) as InsightData;
     } catch {
       parsedJson = null;
     }
   }
-  // Reports created before structured insight storage used `description`.
-  if (!parsedJson && insight.description) {
-    try {
-      const legacy = JSON.parse(insight.description) as unknown;
-      if (legacy && typeof legacy === "object") parsedJson = legacy as InsightData;
-    } catch {
-      // A plain-text legacy description is still displayed as insightsText below.
-    }
-  }
 
   return {
     id: insight.id,
     fileId: insight.fileId,
-    fileName: insight.file?.fileName || "Deleted File",
+    fileName: insight.file.fileName,
     createdAt: insight.createdAt.toISOString(),
-    insightsText: insight.insightsText || insight.description,
+    insightsText: insight.insightsText,
     insightData: parsedJson
   };
 }

@@ -10,7 +10,7 @@ import {
   LogOut,
   X,
   ChevronLeft
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 type Props = {
   open: boolean;

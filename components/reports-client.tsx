@@ -15,7 +15,7 @@ import {
   Calendar,
   FolderOpen,
   Sparkles
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 type InsightItem = {
   id: string;

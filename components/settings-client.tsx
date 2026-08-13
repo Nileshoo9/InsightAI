@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   LockKeyhole,
   AlertTriangle
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 export function SettingsClient({ userEmail }: { userEmail?: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

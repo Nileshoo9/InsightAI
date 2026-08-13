@@ -19,7 +19,7 @@ import {
   ArrowRight,
   Activity,
   Wand2
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 type FileItem = {
   id: string;

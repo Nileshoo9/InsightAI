@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react/dist/cjs/lucide-react.js";
+import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 
 type Props = {
   uploading: boolean;

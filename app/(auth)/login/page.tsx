@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
-import { BarChart3, Sparkles, TrendingUp } from "lucide-react/dist/cjs/lucide-react.js";
+import { BarChart3, Sparkles, TrendingUp } from "lucide-react";
 
 export default function LoginPage() {
   return (

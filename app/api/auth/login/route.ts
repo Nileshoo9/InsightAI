@@ -1,17 +1,13 @@
 import { NextRequest } from "next/server";
-import { getPrisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation";
 import { fail, ok } from "@/lib/http";
 import { signToken, verifyPassword } from "@/lib/auth";
 import { AUTH_COOKIE } from "@/lib/constants";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
-import { requireDatabaseUrl } from "@/lib/env";
 
 export async function POST(req: NextRequest) {
   try {
-    requireDatabaseUrl();
-    const prisma = getPrisma();
-
     const body = await req.json();
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) return fail("Invalid login data", 400);
@@ -34,10 +30,6 @@ export async function POST(req: NextRequest) {
     });
     return response;
   } catch (error) {
-    if (error instanceof Error && error.message === "DATABASE_URL is not configured") {
-      return fail("Database is not configured. Set DATABASE_URL in your .env file and try again.", 503);
-    }
-
     if (isDatabaseUnavailableError(error)) {
       return fail("Database is temporarily unavailable. Please try again shortly.", 503);
     }

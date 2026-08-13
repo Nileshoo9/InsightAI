@@ -15,7 +15,6 @@ export type AggregatedSummary = {
     name: string;
     description: string;
     suggestedKPIs: string[];
-    dataQualityScore?: number;
   };
 };
 

@@ -1,29 +1,16 @@
 import { PrismaClient } from "@prisma/client";
-import { getDatabaseUrl } from "@/lib/env";
 
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 
-let cachedPrisma: PrismaClient | undefined;
+export const prisma =
+  global.prisma ||
+  new PrismaClient({
+    log: ["error"]
+  });
 
-export function getPrisma() {
-  getDatabaseUrl();
-
-  if (cachedPrisma) return cachedPrisma;
-
-  cachedPrisma =
-    global.prisma ||
-    new PrismaClient({
-      log: ["error"]
-    });
-
-  if (process.env.NODE_ENV !== "production") {
-    global.prisma = cachedPrisma;
-  }
-
-  return cachedPrisma;
+if (process.env.NODE_ENV !== "production") {
+  global.prisma = prisma;
 }
-
-export const prisma = getPrisma();

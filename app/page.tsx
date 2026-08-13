@@ -12,7 +12,7 @@ import {
   TrendingUp,
   FileSpreadsheet,
   Brain
-} from "lucide-react/dist/cjs/lucide-react.js";
+} from "lucide-react";
 
 export default async function HomePage() {
   const session = await getSessionFromCookies();

@@ -26,25 +26,20 @@ export async function GET(
     if (!insight) return fail("Insight not found", 404);
 
     let parsedJson: unknown = null;
-    if (insight.insightsJson && typeof insight.insightsJson === "object") {
-      parsedJson = insight.insightsJson;
-    } else if (typeof insight.insightsJson === "string") {
+    if (insight.insightsJson) {
       try {
         parsedJson = JSON.parse(insight.insightsJson);
       } catch {
         parsedJson = null;
       }
     }
-    if (!parsedJson && insight.description) {
-      try { parsedJson = JSON.parse(insight.description); } catch { /* legacy plain text */ }
-    }
 
     return ok({
       id: insight.id,
       fileId: insight.fileId,
-      fileName: insight.file?.fileName || "Deleted File",
+      fileName: insight.file.fileName,
       createdAt: insight.createdAt,
-      insightsText: insight.insightsText || insight.description,
+      insightsText: insight.insightsText,
       insightData: parsedJson
     });
   } catch (err) {

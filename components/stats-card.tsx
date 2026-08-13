@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LucideIcon } from "lucide-react/dist/cjs/lucide-react.js";
+import type { LucideIcon } from "lucide-react";
 
 type Props = {
   label: string;
-  value: number | string;
+  value: number;
   icon: LucideIcon;
   suffix?: string;
   prefix?: string;
@@ -42,9 +42,6 @@ export function StatsCard({ label, value, icon: Icon, suffix, prefix, color = "b
   const c = COLOR_MAP[color];
 
   useEffect(() => {
-    // Only animate when value is a numeric type. For strings, render directly.
-    if (typeof value !== "number") return;
-
     const timeout = setTimeout(() => {
       const duration = 800;
       const start = performance.now();
@@ -71,8 +68,8 @@ export function StatsCard({ label, value, icon: Icon, suffix, prefix, color = "b
           <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
             {label}
           </p>
-          <p className="text-2xl font-extrabold stat-value" style={{ color: c.text }}>
-            {typeof value === 'number' ? `${prefix}${display.toLocaleString()}${suffix ?? ''}` : `${prefix ?? ''}${String(value).slice(0, 40)}${suffix ?? ''}`}
+          <p className="text-2xl font-extrabold" style={{ color: c.text }}>
+            {prefix}{display.toLocaleString()}{suffix}
           </p>
         </div>
         <div

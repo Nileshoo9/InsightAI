@@ -2,19 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fail, ok } from "@/lib/http";
 import { getSessionFromRequest } from "@/lib/auth";
-import { generateWithModelFallback, extractJsonObject, ProviderUnavailableError } from "@/lib/services/openai";
+import { generateWithModelFallback, extractJsonObject } from "@/lib/services/openai";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
-
-function readInsightContext(value: unknown): Record<string, any> {
-  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, any>;
-  if (typeof value !== "string") return {};
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, any> : {};
-  } catch {
-    return {};
-  }
-}
 
 function fallbackAnswer(question: string, dataContext: Record<string, any>): { answer: string; suggestedAction: string } {
   const summary = dataContext?.summary;
@@ -38,7 +27,7 @@ function fallbackAnswer(question: string, dataContext: Record<string, any>): { a
   return {
     answer: `I could not run an AI query for "${question}" right now, but based on saved context: ${evidence}.`,
     suggestedAction:
-      "Retry in a minute or configure a valid Kimi, Gemini, or Groq API key. Meanwhile, ask a specific metric question like 'top category by revenue in latest period'."
+      "Retry in a minute or add a paid Gemini quota. Meanwhile, ask a specific metric question like 'top category by revenue in latest period'."
   };
 }
 
@@ -63,10 +52,10 @@ export async function POST(
     if (!insight) return fail("Insight not found", 404);
 
     // Prepare context: Use InsightJson (summary & profile) + tiny sample of raw data
-    const dataContext = readInsightContext(insight.insightsJson);
+    const dataContext = JSON.parse(insight.insightsJson || "{}");
     
     // SLIM CONTEXT: Be extremely aggressive to stay under Grq 6k free limit
-    const rawSample = Array.isArray(insight.file?.rawPreview) 
+    const rawSample = Array.isArray(insight.file.rawPreview) 
       ? insight.file.rawPreview.slice(0, 8) // Reduced from 50 to 8
       : "No raw sample available";
 
@@ -119,11 +108,7 @@ Response format: Return ONLY valid JSON.
     try {
       text = await generateWithModelFallback("fast", prompt);
     } catch (err) {
-      if (err instanceof ProviderUnavailableError) {
-        console.info("[NLQ] Using stored-context fallback:", err.message);
-      } else {
-        console.warn("NLQ model fallback activated:", err);
-      }
+      console.warn("NLQ model fallback activated:", err);
       return ok(fallbackAnswer(question, dataContext));
     }
 

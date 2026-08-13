@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
-import { Shield, Zap, Globe } from "lucide-react/dist/cjs/lucide-react.js";
+import { Shield, Zap, Globe } from "lucide-react";
 
 export default function SignupPage() {
   return (

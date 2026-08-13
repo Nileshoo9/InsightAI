@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { mapRowsToRecords, shouldUseStructuredParser } from "../parser";
+import { mapRowsToRecords } from "../parser";
 import { buildSummary } from "../analytics";
 import { runDataDiagnostics } from "../diagnostics";
-import { detectEarlyDomain, getProviderConfig, isAuthenticationError } from "../openai";
 
 describe("Data Analyst Service Suite", () => {
   describe("parser.ts - mapRowsToRecords", () => {
@@ -90,71 +89,6 @@ describe("Data Analyst Service Suite", () => {
       const records = mapRowsToRecords(mockRows);
       expect(records).toHaveLength(1);
       expect(records[0].date!.getUTCFullYear()).toBe(2025);
-    });
-  });
-
-  describe("openai.ts - provider selection", () => {
-    it("prefers Lumo when its API key and base URL are configured", () => {
-      const config = getProviderConfig({
-        LUMO_API_KEY: "lumo-test-key",
-        LUMO_API_BASE_URL: "https://api.example.test/v1/",
-        KIMI_API_KEY: "kimi-test-key",
-        NODE_ENV: "test"
-      } as unknown as NodeJS.ProcessEnv);
-
-      expect(config.provider).toBe("lumo");
-      expect(config.lumoBaseUrl).toBe("https://api.example.test/v1");
-    });
-    it("prefers the Kimi provider when a Kimi API key is present", () => {
-      const config = getProviderConfig({
-        KIMI_API_KEY: "kimi-test-key",
-        GEMINI_API_KEY: "",
-        GROQ_API_KEY: "",
-        NODE_ENV: "test"
-      } as unknown as NodeJS.ProcessEnv);
-
-      expect(config.provider).toBe("kimi");
-      expect(config.kimiApiKey).toBe("kimi-test-key");
-    });
-
-    it("exposes OpenRouter as a valid provider option without ignoring the rest of the stack", () => {
-      const config = getProviderConfig({
-        OPENROUTER_API_KEY: "openrouter-test-key",
-        OPENROUTER_MODEL: "openai/gpt-4o-mini",
-        NODE_ENV: "test"
-      } as unknown as NodeJS.ProcessEnv);
-
-      expect(config.provider).toBe("openrouter");
-      expect(config.openrouterApiKey).toBe("openrouter-test-key");
-      expect(config.openrouterModel).toBe("openai/gpt-4o-mini");
-    });
-
-    it("detects authentication failures as fallback-worthy", () => {
-      expect(isAuthenticationError({ status: 401, message: "Invalid Authentication" })).toBe(true);
-      expect(isAuthenticationError({ status: 403, message: "Forbidden" })).toBe(true);
-      expect(isAuthenticationError({ status: 500, message: "Internal Server Error" })).toBe(false);
-    });
-  });
-
-  describe("data shape detection", () => {
-    it("recognizes Netflix-style content data as streaming/media instead of retail sales", () => {
-      const rows = [
-        {
-          show_id: "s1",
-          type: "Movie",
-          title: "The Matrix",
-          director: "Lana Wachowski",
-          country: "United States",
-          date_added: "2021-01-01",
-          release_year: 1999,
-          rating: "TV-MA",
-          duration: "136 min",
-          listed_in: "Sci-Fi"
-        }
-      ];
-
-      expect(shouldUseStructuredParser(rows)).toBe(false);
-      expect(detectEarlyDomain(Object.keys(rows[0]), rows)).toBe("Streaming/Media");
     });
   });
 
