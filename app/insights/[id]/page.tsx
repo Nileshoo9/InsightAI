@@ -1,70 +1,32 @@
 import { redirect } from "next/navigation";
 import { getSessionFromCookies } from "@/lib/auth";
-import { InsightView } from "@/components/insight-view";
 import { prisma } from "@/lib/prisma";
+import { createDataProfile } from "@/lib/services/profiler";
+import { buildIndustryReport } from "@/lib/services/report-engine";
+import { IndustryReport } from "@/components/industry-report";
 
 async function getInsight(userId: string, id: string) {
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) return null;
 
   const insight = await prisma.insight.findFirst({
-    where: {
-      id,
-      userId
-    },
-    include: {
-      file: true
-    }
+    where: { id, userId },
+    include: { file: true }
   });
   if (!insight) return null;
 
-  type InsightData = {
-    summary?: {
-      totalRevenue: number;
-      totalQuantity: number;
-      uniqueCustomers: number;
-      weeklyGrowth: number;
-      monthlyTrend: { month: string; revenue: number }[];
-    };
-    insights?: {
-      keyInsights: string[];
-      recommendations: string[];
-      alerts: string[];
-      trends: string[];
-      risks: string[];
-      opportunities: string[];
-    };
-    profile?: {
-      rowCount: number;
-      columnCount: number;
-      columns: string[];
-      categoricalBreakdown: {
-        column: string;
-        items: { name: string; value: number }[];
-      }[];
-      numericSummary: {
-        column: string;
-        avg: number;
-        min: number;
-        max: number;
-        count: number;
-      }[];
-      timeSeries: {
-        label: string;
-        value: number;
-        metric: string;
-        dateColumn: string;
-      }[];
-    };
-  } | null;
-
-  let parsedJson: InsightData = null;
+  let parsedJson: any = null;
   if (insight.insightsJson) {
-    try {
-      parsedJson = JSON.parse(insight.insightsJson) as InsightData;
-    } catch {
-      parsedJson = null;
-    }
+    try { parsedJson = JSON.parse(insight.insightsJson); } catch { parsedJson = null; }
   }
+
+  const rawRows = Array.isArray(insight.file.rawPreview)
+    ? (insight.file.rawPreview as Record<string, unknown>[])
+    : [];
+
+  // Reports created before industry-v1 are upgraded on read from the original raw schema.
+  const profile = parsedJson?.profile || (rawRows.length ? createDataProfile(rawRows) : null);
+  const report = parsedJson?.report || (profile ? buildIndustryReport(rawRows, profile) : null);
+  if (!report) return null;
 
   return {
     id: insight.id,
@@ -72,7 +34,8 @@ async function getInsight(userId: string, id: string) {
     fileName: insight.file.fileName,
     createdAt: insight.createdAt.toISOString(),
     insightsText: insight.insightsText,
-    insightData: parsedJson
+    insightData: parsedJson,
+    report
   };
 }
 
@@ -88,5 +51,5 @@ export default async function InsightDetailPage({
   const data = await getInsight(session.userId, id);
   if (!data) redirect("/dashboard");
 
-  return <InsightView insight={data} />;
+  return <IndustryReport insight={data} report={data.report} />;
 }
