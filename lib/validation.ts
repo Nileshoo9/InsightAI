@@ -16,9 +16,6 @@ export const passwordChangeSchema = z.object({
 });
 
 export const analyzeSchema = z.object({
-  fileId: z.string().min(1).optional(),
-  prompt: z.string().trim().optional(),
-  data: z
-    .array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])))
-    .optional()
-});
+  fileId: z.string().min(1),
+  prompt: z.string().trim().max(1000).optional()
+}).strict();

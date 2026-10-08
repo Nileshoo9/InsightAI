@@ -22,7 +22,7 @@ export async function GET(
         uploadedAt: true,
         rawPreview: true,
         rawRowCount: true,
-        _count: { select: { records: true, insights: true } }
+        _count: { select: { insights: true } }
       }
     });
 
@@ -37,7 +37,7 @@ export async function GET(
       fileName: file.fileName,
       uploadedAt: file.uploadedAt,
       rawRowCount: file.rawRowCount,
-      recordCount: file._count.records,
+      recordCount: file.rawRowCount,
       insightCount: file._count.insights,
       preview
     });
@@ -66,7 +66,6 @@ export async function DELETE(
 
     /* Cascade delete */
     await prisma.insight.deleteMany({ where: { fileId: id } });
-    await prisma.dataRecord.deleteMany({ where: { fileId: id } });
     await prisma.file.delete({ where: { id } });
 
     return ok({ success: true });

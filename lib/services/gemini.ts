@@ -1,16 +1,12 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { InsightPayload } from "@/lib/types";
 
-const DEFAULT_MODELS = ["gemini-3.6-flash"];
+const DEFAULT_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
 
 function configuredModels() {
   const configured = process.env.GEMINI_MODEL?.trim();
-  return [...new Set([configured, ...DEFAULT_MODELS].filter(
-    (model): model is string => {
-      if (!model) return false;
-      return model === "gemini-3.6-flash";
-    }
-  ))];
+  const candidates = [configured, ...DEFAULT_MODELS].filter((model): model is string => Boolean(model && model.trim()));
+  return [...new Set(candidates.map((model) => model.trim()))];
 }
 function isExpectedProviderFailure(error: unknown) {
   if (!(error instanceof Error)) return false;

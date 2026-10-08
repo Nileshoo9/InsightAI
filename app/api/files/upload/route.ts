@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     /* Size check */
     if (file.size > MAX_FILE_SIZE) {
-      return fail(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`, 400);
+      return fail(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`, 413);
     }
 
     /* Extension check */
@@ -83,7 +83,6 @@ export async function POST(req: NextRequest) {
     if (isDatabaseUnavailableError(error)) {
       return fail("Database is temporarily unavailable. Please try again shortly.", 503);
     }
-    const message = error instanceof Error ? error.message : "Failed to upload file";
-    return fail(message, 500);
+    return fail("The file could not be parsed. Check its format and headers.", 422);
   }
 }

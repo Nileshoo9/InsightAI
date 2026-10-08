@@ -19,7 +19,7 @@ function isRateLimited(key: string): boolean {
 
 /* ── Route config ────────────────────────────────────── */
 const PUBLIC_PATHS = ["/", "/login", "/signup"];
-const PUBLIC_API = ["/api/auth/login", "/api/auth/signup", "/api/analyze"];
+const PUBLIC_API = ["/api/auth/login", "/api/auth/signup"];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;

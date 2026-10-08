@@ -192,9 +192,17 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
       median = _median(sorted);
       stddev = _std(sorted);
       variance = stddev !== null ? Math.pow(stddev, 2) : null;
+
+      const safeMedian = (items: number[]) => {
+        if (!items.length) return null;
+        return _median(items);
+      };
+
       const mid = Math.floor(sorted.length / 2);
-      q1 = _median(sorted.slice(0, mid));
-      q3 = _median(sorted.slice(mid));
+      const lowerHalf = sorted.length > 1 ? sorted.slice(0, Math.max(1, mid)) : sorted;
+      const upperHalf = sorted.length > 1 ? sorted.slice(Math.max(0, mid)) : sorted;
+      q1 = safeMedian(lowerHalf);
+      q3 = safeMedian(upperHalf);
       iqr = (q3 !== null && q1 !== null) ? (q3 - q1) : null;
       // mode
       const counts = new Map<number, number>();

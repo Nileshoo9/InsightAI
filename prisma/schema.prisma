@@ -19,33 +19,18 @@ model User {
 }
 
 model File {
-  id         String      @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
   fileName   String
-  uploadedAt DateTime    @default(now())
+  uploadedAt DateTime  @default(now())
   rawPreview Json?
   /// Complete normalized source rows. rawPreview is strictly a UI preview.
   rawData     Json?
-  rawRowCount Int        @default(0)
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  records    DataRecord[]
-  insights   Insight[]
+  rawRowCount Int      @default(0)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insights    Insight[]
 
   @@index([userId, uploadedAt])
-}
-
-model DataRecord {
-  id        String   @id @default(cuid())
-  fileId    String
-  date      DateTime
-  revenue   Float
-  product   String
-  quantity  Int
-  category  String?
-  customer  String?
-  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
-
-  @@index([fileId])
 }
 
 model Insight {

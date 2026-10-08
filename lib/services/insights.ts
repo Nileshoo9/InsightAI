@@ -1,5 +1,5 @@
 import { buildSummary } from "@/lib/services/analytics";
-import { generateGenericInsights, generateInsights, parseAnalysisIntent } from "@/lib/services/openai";
+import { generateGenericInsights, generateInsights, parseAnalysisIntent } from "@/lib/services/ai";
 import { runDataDiagnostics } from "@/lib/services/diagnostics";
 import { GenericProfile, ParsedRecord, AggregatedSummary, InsightPayload } from "@/lib/types";
 import { createDataProfile } from "@/lib/services/profiler";

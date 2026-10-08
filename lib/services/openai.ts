@@ -1,3 +1,6 @@
+// Backwards-compatible analytics wrapper. The project prefers deterministic
+// calculations plus optional Gemini explanation, so this module stays as a
+// compatibility layer rather than the canonical business logic.
 import { AggregatedSummary, InsightPayload } from "@/lib/types";
 import Groq from "groq-sdk";
 import { generateAIInsights } from "@/lib/services/gemini";

@@ -31,3 +31,13 @@ export function requireDatabaseUrl() {
 export function getDatabaseUrl() {
   return requireDatabaseUrl();
 }
+
+/** Validate server secrets without ever exposing their values. Gemini is optional. */
+export function validateServerEnvironment() {
+  const databaseUrl = requireDatabaseUrl();
+  const jwtSecret = process.env.JWT_SECRET?.trim();
+  if (!jwtSecret || jwtSecret.length < 32 || /replace|change[-_ ]?me|development-secret|^secret$/i.test(jwtSecret)) {
+    throw new Error("JWT_SECRET must be a unique random value with at least 32 characters");
+  }
+  return { databaseUrl, geminiEnabled: Boolean(process.env.GEMINI_API_KEY?.trim()) };
+}

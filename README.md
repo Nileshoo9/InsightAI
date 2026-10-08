@@ -1,195 +1,208 @@
-# AI Data Analyst SaaS (MVP)
+# InsightAI — AI-Powered Intelligent Data Analysis and Visualization System
 
-Production-ready MVP to upload sales data (CSV/Excel), process it, store it, and generate AI-powered business insights.
+InsightAI is a modular, dataset-driven analytics application built for a final-year engineering project. It accepts CSV, JSON, and Excel files, validates and profiles the structure, cleans and diagnoses data quality issues, detects the likely domain, selects relevant KPIs, and generates deterministic reports with optional AI narration for explanation.
 
-## 1. Folder Structure
+## 1. Project Overview
+
+The project focuses on making data analysis more accessible to users who are not data specialists. Instead of assuming that every dataset is a sales file, the system adapts to the structure it sees: education, healthcare, HR, finance, sales, or general analytics.
+
+## 2. Problem Statement
+
+Manual analysis usually requires several stages that are repetitive and error-prone:
+
+- dataset upload and validation
+- parsing inconsistent files
+- cleaning missing and invalid values
+- profiling columns and statistics
+- detecting domain-specific patterns
+- selecting meaningful KPIs
+- visualizing the right chart types
+- turning results into explainable insights
+
+InsightAI automates these stages while keeping the statistical logic deterministic and explainable.
+
+## 3. Objectives
+
+- support generic datasets, not only sales data
+- keep full raw data separate from preview data
+- detect domain and semantic columns using dataset signals
+- calculate analytics deterministically before calling the AI layer
+- protect authentication and authorization boundaries
+- provide a report that still works when AI is unavailable
+
+## 4. System Architecture
 
 ```text
-.
-|-- app
-|   |-- (auth)
-|   |   |-- login/page.tsx
-|   |   `-- signup/page.tsx
-|   |-- api
-|   |   |-- analyze/route.ts
-|   |   |-- auth
-|   |   |   |-- login/route.ts
-|   |   |   |-- logout/route.ts
-|   |   |   |-- me/route.ts
-|   |   |   `-- signup/route.ts
-|   |   |-- files
-|   |   |   |-- route.ts
-|   |   |   `-- upload/route.ts
-|   |   `-- insights
-|   |       |-- [id]/route.ts
-|   |       `-- route.ts
-|   |-- dashboard/page.tsx
-|   |-- insights/[id]/page.tsx
-|   |-- globals.css
-|   |-- layout.tsx
-|   `-- page.tsx
-|-- components
-|   |-- auth-form.tsx
-|   |-- dashboard-client.tsx
-|   |-- insight-view.tsx
-|   `-- trend-chart.tsx
-|-- lib
-|   |-- services
-|   |   |-- analytics.ts
-|   |   |-- insights.ts
-|   |   |-- openai.ts
-|   |   `-- parser.ts
-|   |-- auth.ts
-|   |-- client-api.ts
-|   |-- constants.ts
-|   |-- http.ts
-|   |-- prisma.ts
-|   |-- require-auth.ts
-|   |-- types.ts
-|   `-- validation.ts
-|-- prisma/schema.prisma
-|-- .env.example
-|-- .gitignore
-|-- next.config.ts
-|-- package.json
-|-- postcss.config.js
-|-- tailwind.config.ts
-`-- tsconfig.json
+Upload
+  ↓
+Parser
+  ↓
+Cleaner
+  ↓
+Profiler
+  ↓
+Domain Detection
+  ↓
+Deterministic Analytics Engine
+  ↓
+Visualization Selection
+  ↓
+AI Insight Layer (explanatory only)
+  ↓
+Dashboard / Report / NLQ
 ```
 
-## 2. Tech Stack
+## 5. Key Modules
 
-- Frontend: Next.js (App Router) + Tailwind CSS
-- Backend: Next.js Route Handlers (`/app/api/*`)
-- Database: Prisma + PostgreSQL
-- AI: OpenAI Responses API
-- Upload parsing: `papaparse` (CSV) + `xlsx` (Excel)
-- Auth: JWT in HTTP-only cookie + bcrypt password hashing
+- File Upload: secure multipart upload with size and format validation
+- Parsing: CSV, JSON, and Excel ingestion with normalization
+- Cleaning: whitespace normalization, missing-value detection, duplicate removal, invalid-value checks
+- Profiling: row counts, column metadata, semantic detection, numeric summaries
+- Data Quality: completeness, validity, uniqueness, and duplicate-rate diagnostics
+- Domain Detection: education, healthcare, HR, finance, sales, and general analytics
+- Analytics: correlation, trends, distributions, grouping, and anomaly checks
+- Visualization: chart selection based on data structure
+- AI Insights: Gemini-backed explanation layer with deterministic evidence as the source of truth
+- Report Generation: domain-aware KPI and findings summary
+- NLQ: user query interpretation with validated filters and deterministic aggregation
 
-## 3. Database Schema
+## 6. Supported Formats
 
-Implemented in `prisma/schema.prisma`:
+- CSV
+- JSON array/object with a data array
+- XLSX and XLS
 
-- `User`: `id`, `email`, `password`, `createdAt`
-- `File`: `id`, `userId`, `fileName`, `uploadedAt`
-- `DataRecord`: normalized parsed rows (`date`, `revenue`, `product`, `quantity`, `category`, `customer`)
-- `Insight`: `id`, `userId`, `fileId`, `insightsText`, `insightsJson`, `createdAt`
+The application is designed for tabular dataset workflows and does not assume a single business domain.
 
-## 4. Step-by-Step Build Mapping
+## 7. Supported Domains
 
-1. Initialize project:
-   - Configured Next.js + TypeScript + Tailwind + scripts in `package.json`
-2. Setup database:
-   - Added Prisma schema and client bootstrap
-3. Setup authentication:
-   - Signup/login/logout routes, bcrypt, JWT, secure cookie handling
-4. Build file upload:
-   - `/api/files/upload` with `multipart/form-data`
-5. Parse CSV/Excel:
-   - `lib/services/parser.ts` (header alias mapping + field normalization)
-6. Save to database:
-   - Creates `File`, bulk inserts `DataRecord`
-7. Integrate OpenAI API:
-   - `lib/services/openai.ts` using structured JSON schema output
-8. Generate insights:
-   - `/api/analyze` generates summary + AI insights and stores report
-9. Display insights:
-   - `app/insights/[id]/page.tsx` + `components/insight-view.tsx`
-10. Build REST API endpoint:
-   - `POST /api/analyze` supports:
-     - `fileId` (authenticated internal analyze)
-     - `data` array (external integration use-case)
+The implemented model prioritizes five strong domains:
 
-## 5. API Contracts
+1. Sales / Retail
+2. Education
+3. Healthcare
+4. HR / Workforce
+5. Finance
 
-### `POST /api/analyze`
+When the schema is not a strong match, the system falls back to General Analytics.
 
-Request:
+## 8. Technology Stack
 
-```json
-{
-  "fileId": 1
-}
+- Next.js 15 + React 19 + TypeScript
+- Tailwind CSS
+- Prisma ORM
+- PostgreSQL-compatible database
+- JWT-based authentication with bcrypt
+- Papa Parse + xlsx for file parsing
+- Gemini API for optional narrative enrichment
+- Recharts for dashboard/chart rendering
+
+## 9. AI + Deterministic Analytics Architecture
+
+This is an important viva concept for the project:
+
+```text
+Dataset
+  ↓
+Deterministic analytics engine
+  ↓
+Validated metrics, distributions, and findings
+  ↓
+Gemini / AI explanation layer
+  ↓
+Final report or dashboard summary
 ```
 
-or
+The AI layer does not calculate authoritative metrics. It explains context already computed by the code. If the evidence is weak or the provider fails, the deterministic report remains available.
 
-```json
-{
-  "data": [
-    {
-      "date": "2026-01-10",
-      "revenue": 1999.5,
-      "product": "Rice Pack",
-      "quantity": 10,
-      "category": "Grocery",
-      "customer": "CUST-101"
-    }
-  ]
-}
+## 10. Installation
+
+```bash
+npm install
+copy .env.example .env
+npm run prisma:generate
+npm run prisma:push
+npm run dev
 ```
 
-Response:
+On Windows, use:
 
-```json
-{
-  "summary": {
-    "totalRevenue": 1999.5,
-    "weeklyGrowth": 0,
-    "topProducts": []
-  },
-  "insights": {
-    "keyInsights": [],
-    "recommendations": [],
-    "risks": [],
-    "opportunities": [],
-    "alerts": [],
-    "trends": []
-  }
-}
+```powershell
+copy .env.example .env
 ```
 
-## 6. Local Setup
+## 11. Environment Variables
 
-1. Install dependencies:
-   - `npm install`
-2. Configure environment:
-   - `cp .env.example .env` (or create `.env` manually on Windows)
-   - Set `DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET`
-   - If using Supabase and you see `database system is not accepting connections`, verify your project is active and use the correct Postgres connection string from Supabase settings
-3. Prepare database:
-   - `npm run prisma:generate`
-   - `npm run prisma:push`
-4. Start app:
-   - `npm run dev`
-5. Open:
-   - `http://localhost:3000`
+Use placeholders only and keep secrets server-side.
 
-## 7. How to Run Locally
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
+JWT_SECRET="replace-with-a-long-random-secret-of-at-least-32-characters"
+GEMINI_API_KEY="your-gemini-api-key"
+GEMINI_MODEL="gemini-2.0-flash"
+AI_PROVIDER="gemini"
+```
 
-1. Sign up at `/signup`
-2. Login at `/login`
-3. Upload CSV/Excel in `/dashboard`
-4. Click `Analyze Data`
-5. Open generated report in `/insights/[id]`
+Never commit real credentials. Never expose them to client-side code.
 
-## 8. Deployment
+## 12. Testing
 
-Recommended: Vercel + hosted DB.
+```bash
+npm test
+```
 
-1. Push repo to GitHub
-2. Import to Vercel
-3. Set env vars in Vercel:
-   - `OPENAI_API_KEY`
-   - `JWT_SECRET`
-   - `DATABASE_URL` (for production, prefer PostgreSQL + Prisma)
-4. Run Prisma generate/push in deployment pipeline
-5. Deploy
+The project includes tests covering parsing, diagnostics, profile generation, domain detection, report construction, and architecture guardrails.
 
-## 9. Notes for Production Hardening
+## 13. Limitations
 
-- Add rate limiting on `/api/analyze` and upload routes
-- Add schema-based column mapping UI if source files vary heavily
-- Add background job queue for large files
-- Add tenant-level RBAC and audit logs
-- Add indexes and optimize PostgreSQL query patterns for multi-user scale
+- large datasets should be managed with explicit sample documentation when needed
+- AI-generated explanations are support layers, not calculation engines
+- complex causal claims require a dedicated causal model or experimental design
+- highly unstructured or messy files may require manual cleanup before perfect results
+
+## 14. Future Scope
+
+- advanced predictive modelling
+- more domain modules
+- larger-scale data ingestion
+- multilingual insight generation
+- improved anomaly detection and automated remediation
+- richer NLQ validation with field-level schema understanding
+
+## 15. Technical Documentation Summary
+
+This project addresses a real problem: ordinary dataset analysis is usually fragmented across manual cleaning, visualization, and interpretation. InsightAI consolidates those stages into a single explainable workflow.
+
+### Problem
+Manual data work is slow, inconsistent, and expensive for students, researchers, and small teams.
+
+### Existing Limitations
+Many generic tools either assume a single domain or produce opaque results without evidence.
+
+### Proposed System
+A dataset-driven analytics platform that validates inputs, profiles data, selects relevant KPIs, and explains what the numbers mean.
+
+### Architecture
+The system separates deterministic analysis from AI explanation, which is essential for academic demonstration, trust, and correctness.
+
+### Methodology
+- ingest and normalize raw rows
+- detect semantic and domain signals
+- compute statistics and quality tests
+- build structured findings and visualizations
+- optionally enrich explanation with Gemini
+
+### Implementation
+The repository uses a modular monolith approach to keep the project understandable and demonstrable during viva evaluation.
+
+### Testing
+Validation includes parser checks, domain detection, KPI selection, and end-to-end report generation tests.
+
+### Results
+The system is able to adapt across a variety of dataset structures while staying explainable and defensible.
+
+### Limitations
+AI is used selectively and does not replace deterministic analytics.
+
+### Future Scope
+This project can be extended with more advanced analytics, deeper NLP, and additional domain logic.
