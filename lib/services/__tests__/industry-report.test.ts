@@ -53,6 +53,21 @@ describe("industry report engine", () => {
     expect(report.kpis.some((kpi) => /revenue|sales|customer/i.test(kpi.label))).toBe(false);
   });
 
+  it("writes a finding-driven executive summary with evidence and action language", () => {
+    const rows = [
+      { product: "A", region: "North", revenue: 120, units: 20 },
+      { product: "A", region: "North", revenue: 110, units: 18 },
+      { product: "B", region: "South", revenue: 90, units: 16 },
+      { product: "B", region: "South", revenue: 52, units: 12 },
+      { product: "C", region: "East", revenue: 140, units: 22 },
+      { product: "C", region: "East", revenue: 138, units: 21 }
+    ];
+    const report = buildIndustryReport(rows, createDataProfile(rows));
+    expect(report.executive.summary.toLowerCase()).toMatch(/(largest|difference|gap|segmentation|category|performance|declin|investigat)/i);
+    expect(report.recommendations.length).toBeGreaterThan(0);
+    expect(report.findings.some((finding) => finding.evidence.length > 0)).toBe(true);
+  });
+
   it("builds an education strategy with analytical charts and evidence", () => {
     const rows = [
       { student_id: "S1", math_score: 92, biology_score: 84, absence_days: 1, gender: "F", subject: "Math" },

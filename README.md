@@ -117,18 +117,18 @@ The AI layer does not calculate authoritative metrics. It explains context alrea
 
 ## 10. Installation
 
+For a complete first-time setup on Windows, macOS, or Linux, see the [Fresh Computer Setup Guide](SETUP.md). It covers the required tools, hosted PostgreSQL configuration, environment variables, database initialization, and starting the app. A PostgreSQL server can be hosted remotely, so it does not need to be installed on the development computer.
+
+Quick start after Node.js and Git are installed:
+
 ```bash
-npm install
-copy .env.example .env
+git clone https://github.com/Nileshoo9/InsightAI.git
+cd InsightAI
+npm ci
+# Create .env from .env.example and configure it; see SETUP.md
 npm run prisma:generate
 npm run prisma:push
 npm run dev
-```
-
-On Windows, use:
-
-```powershell
-copy .env.example .env
 ```
 
 ## 11. Environment Variables
@@ -139,7 +139,7 @@ Use placeholders only and keep secrets server-side.
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
 JWT_SECRET="replace-with-a-long-random-secret-of-at-least-32-characters"
 GEMINI_API_KEY="your-gemini-api-key"
-GEMINI_MODEL="gemini-2.0-flash"
+GEMINI_MODEL="gemini-3.8-flash"
 AI_PROVIDER="gemini"
 ```
 

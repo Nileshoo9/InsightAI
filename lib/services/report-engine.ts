@@ -232,6 +232,90 @@ function buildCharts(rows: Record<string, unknown>[], profile: DataProfile, doma
   return charts.filter((chart) => chart.data.length > 0).slice(0, 4);
 }
 
+function buildGenericEvidence(rows: Record<string, unknown>[], profile: DataProfile): ReportFinding[] {
+  const finding = (title: string, description: string, evidence: string, importance: ReportFinding["importance"] = "medium"): ReportFinding => ({ title, description, evidence, importance });
+  const findings: ReportFinding[] = [];
+
+  const metric = profile.numericSummary?.[0];
+  const dimension = profile.categoricalBreakdown?.[0];
+  const series = profile.timeSeries || [];
+
+  if (dimension && metric) {
+    const grouped = averageForGroup(rows, dimension.column, metric.column);
+    if (grouped.length > 1) {
+      const strongest = grouped[0];
+      const weakest = grouped[grouped.length - 1];
+      const gap = strongest.value - weakest.value;
+      const relativeGap = Math.abs(gap) / Math.max(Math.abs(weakest.value), 1) * 100;
+      if (Math.abs(gap) >= Math.max(5, Math.abs(metric.avg) * 0.1) && relativeGap >= 8) {
+        findings.push(finding(
+          "Largest segment gap",
+          `${strongest.name} performs materially higher than ${weakest.name} on ${metric.column}.`,
+          `Observed mean gap: ${formatNumber(gap)} points (${relativeGap.toFixed(1)}% relative difference). ${strongest.name} represents ${formatNumber(strongest.value)} compared with ${weakest.name} at ${formatNumber(weakest.value)}.`,
+          "high"
+        ));
+      }
+    }
+
+    if (dimension.items.length > 0) {
+      const topShare = dimension.items[0]?.pct ?? 0;
+      if (topShare >= 30) {
+        findings.push(finding(
+          "Category concentration",
+          `${dimension.column} is highly concentrated in a small number of values.`,
+          `The top observed value accounts for ${pct(topShare)} of records, indicating a concentrated distribution rather than a broad spread.`,
+          "medium"
+        ));
+      }
+    }
+  }
+
+  if (series.length >= 2) {
+    const first = series[0].value;
+    const last = series[series.length - 1].value;
+    const change = first === 0 ? 0 : ((last - first) / Math.abs(first)) * 100;
+    if (Math.abs(change) >= 10) {
+      findings.push(finding(
+        "Temporal change",
+        `${series[0].metric} shows a material period-over-period shift.`,
+        `From ${formatNumber(first)} to ${formatNumber(last)}: ${change >= 0 ? "up" : "down"} ${Math.abs(change).toFixed(1)}% across the observed timeline.`,
+        "high"
+      ));
+    }
+  }
+
+  const strongRelationship = profile.correlations?.find((item) => Math.abs(item.coefficient) >= 0.6);
+  if (strongRelationship) {
+    findings.push(finding(
+      "Relationship signal",
+      `${strongRelationship.first} and ${strongRelationship.second} show a strong observed association.`,
+      `Pearson correlation: ${strongRelationship.coefficient.toFixed(2)} (${strongRelationship.strength} strength). This is an association, not a confirmed cause.`,
+      "medium"
+    ));
+  }
+
+  const missingColumn = profile.columns.find((column) => column.missingPct > 20);
+  if (missingColumn) {
+    findings.push(finding(
+      "Data quality risk",
+      `${missingColumn.name} has a meaningful missing-data pattern.`,
+      `${missingColumn.missingPct.toFixed(1)}% of values are missing, so conclusions based on this field should be treated with caution.`,
+      "medium"
+    ));
+  }
+
+  if (!findings.length) {
+    findings.push(finding(
+      "Dataset overview",
+      "The available structure is too limited to support a strong directional conclusion.",
+      `The dataset contains ${formatNumber(profile.rowCount)} records and ${profile.columnCount} fields with no dominant gap or trend signal above the threshold.`,
+      "low"
+    ));
+  }
+
+  return findings.slice(0, 5);
+}
+
 function buildNarrative(rows: Record<string, unknown>[], profile: DataProfile, domain: ReturnType<typeof detectIndustryDomain>) {
   const language = getDomainLanguage(domain.domain);
   const metric = profile.numericSummary?.[0];
@@ -247,7 +331,11 @@ function buildNarrative(rows: Record<string, unknown>[], profile: DataProfile, d
 
   const leader = dimension?.items?.[0];
   const finding = (title: string, description: string, evidence: string, importance: ReportFinding["importance"] = "medium"): ReportFinding => ({ title, description, evidence, importance });
-  const findings: ReportFinding[] = [finding("Dataset Coverage", `${formatNumber(profile.rowCount)} records were evaluated across ${profile.columnCount} fields.`, `Detected reporting lens: ${language.label}.`, "low")];
+  const genericFindings = buildGenericEvidence(rows, profile);
+  const findings: ReportFinding[] = [
+    ...genericFindings,
+    finding("Dataset Coverage", `${formatNumber(profile.rowCount)} records were evaluated across ${profile.columnCount} fields.`, `Detected reporting lens: ${language.label}.`, "low")
+  ];
   const risks: ReportFinding[] = buildQuality(profile).warnings.map((warning) => finding("Data Quality", warning, warning, "medium"));
   const opportunities: ReportFinding[] = [];
 
@@ -283,6 +371,7 @@ function buildNarrative(rows: Record<string, unknown>[], profile: DataProfile, d
 
   const recommendations = [
     `Adopt ${language.objective.toLowerCase()} as the primary reporting lens rather than applying a generic sales template.`,
+    `Investigate the strongest observed difference or risk signal before making operational decisions.`,
     metric ? `Track ${metric.column} with median and percentile context, not only the average, to reduce sensitivity to skew and outliers.` : "Prioritize schema enrichment and define one measurable outcome before operationalizing the dashboard.",
     dimension ? `Segment decisions by ${dimension.column} and compare the top segments against the long tail.` : "Introduce meaningful business dimensions such as department, region, cohort, type or category where applicable."
   ];
@@ -290,9 +379,17 @@ function buildNarrative(rows: Record<string, unknown>[], profile: DataProfile, d
   const educationSummary = educationMetrics.length
     ? `${educationMetrics.slice(0, 3).map((item) => `${humanize(item.column)} averages ${formatNumber(item.avg)}`).join(", ")}.`
     : "Academic score coverage is limited.";
-  const summary = domain.domain === "Education"
-    ? `The dataset contains ${formatNumber(profile.rowCount)} student records. ${educationSummary} ${trend}`
-    : `${language.objective}. ${trend}`;
+
+  const executiveSummaryParts = findings
+    .slice(0, 3)
+    .map((item) => `${item.title}: ${item.description}`)
+    .filter(Boolean);
+
+  const summary = executiveSummaryParts.length
+    ? `${executiveSummaryParts.join(" ")}${series.length >= 2 ? ` ${trend}` : ""}`
+    : domain.domain === "Education"
+      ? `The dataset contains ${formatNumber(profile.rowCount)} student records. ${educationSummary} ${trend}`
+      : `${language.objective}. ${trend}`;
 
   return {
     headline: domain.domain === "Education" ? "Education analytics: academic performance and attendance" : `${language.label}: ${metric ? `${metric.column} is the primary quantitative signal` : "structure and distribution are the primary signals"}.`,
@@ -300,7 +397,7 @@ function buildNarrative(rows: Record<string, unknown>[], profile: DataProfile, d
     findings,
     risks: risks.slice(0, 5),
     opportunities: opportunities.slice(0, 5),
-    recommendations
+    recommendations: recommendations.slice(0, 4)
   };
 }
 
