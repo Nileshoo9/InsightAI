@@ -1,4 +1,7 @@
-import { Prisma } from "@prisma/client";
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError
+} from "@prisma/client/runtime/library";
 
 const TRANSIENT_DB_ERROR_PATTERNS = [
   "database system is not accepting connections",
@@ -8,11 +11,11 @@ const TRANSIENT_DB_ERROR_PATTERNS = [
 ];
 
 export function isDatabaseUnavailableError(error: unknown) {
-  if (error instanceof Prisma.PrismaClientInitializationError) {
+  if (error instanceof PrismaClientInitializationError) {
     return true;
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (error instanceof PrismaClientKnownRequestError) {
     return error.code === "P1001" || error.code === "P1002";
   }
 

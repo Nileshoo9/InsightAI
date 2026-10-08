@@ -127,10 +127,35 @@ export function parseExcelRows(buffer: ArrayBuffer) {
   return normalizeRows(jsonRows);
 }
 
+export function parseJsonRows(text: string) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("JSON parse failed: invalid JSON format");
+  }
+
+  const rows = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && Array.isArray((parsed as { data?: unknown }).data)
+      ? (parsed as { data: unknown[] }).data
+      : null;
+
+  if (!rows || !rows.every((row) => row !== null && typeof row === "object" && !Array.isArray(row))) {
+    throw new Error("JSON files must contain an array of row objects or an object with a data array");
+  }
+
+  return normalizeRows(rows as RowInput[]);
+}
+
 export function parseCsvFile(text: string) {
   return mapRowsToRecords(parseCsvRows(text));
 }
 
 export function parseExcelFile(buffer: ArrayBuffer) {
   return mapRowsToRecords(parseExcelRows(buffer));
+}
+
+export function parseJsonFile(text: string) {
+  return mapRowsToRecords(parseJsonRows(text));
 }

@@ -22,26 +22,27 @@ export async function POST(req: NextRequest) {
       if (!session) return fail("Unauthorized for file-based analyze", 401);
       const file = await prisma.file.findFirst({
         where: { id: fileId, userId: session.userId },
-        select: { id: true, rawPreview: true, rawRowCount: true }
+        select: { id: true, rawData: true, rawRowCount: true }
       });
       if (!file) return fail("File not found", 404);
 
-      // IMPORTANT: never force arbitrary datasets through the sales-only DataRecord schema.
-      // rawPreview preserves the original columns and lets the profiler/domain engine decide
-      // whether the dataset is healthcare, education, finance, sales, IoT, etc.
-      const rawRows = Array.isArray(file.rawPreview)
-        ? (file.rawPreview as Record<string, unknown>[])
+      const rawRows = Array.isArray(file.rawData)
+        ? (file.rawData as Record<string, unknown>[])
         : [];
-      if (!rawRows.length) return fail("No source rows found for file", 404);
+      if (!rawRows.length) return fail("The complete source dataset is unavailable for this file. Re-upload it to run a correct analysis.", 409);
 
       const { summary, insights, profile } = await analyzeFromRawRows(rawRows, prompt);
-      const report = profile ? buildIndustryReport(rawRows, profile as any) : null;
+      const report = profile ? buildIndustryReport(rawRows, profile) : null;
+      const description = report?.executive.summary?.trim()
+        || report?.executive.headline?.trim()
+        || `${report?.domain.name ?? "Data"} analytics report generated from the uploaded dataset.`;
 
       const saved = await prisma.insight.create({
         data: {
           userId: session.userId,
           fileId: file.id,
           insightsText: JSON.stringify(insights, null, 2),
+          description,
           insightsJson: JSON.stringify({
             summary,
             insights,
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const rawRows = (data || []) as Record<string, unknown>[];
     const { summary, insights, profile } = await analyzeFromRawRows(rawRows, prompt);
-    const report = profile ? buildIndustryReport(rawRows, profile as any) : null;
+    const report = profile ? buildIndustryReport(rawRows, profile) : null;
     return ok({ summary, insights, profile, report });
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {

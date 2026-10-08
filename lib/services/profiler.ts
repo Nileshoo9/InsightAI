@@ -41,6 +41,7 @@ export type NumericSummaryItem = {
 };
 
 export type TimeSeriesPoint = { label: string; value: number; metric: string; dateColumn: string };
+export type Correlation = { first: string; second: string; coefficient: number; strength: "weak" | "moderate" | "strong" };
 
 export type DataProfile = {
   columns: ColumnProfile[];
@@ -50,10 +51,13 @@ export type DataProfile = {
   categoricalBreakdown?: CategoricalBreakdownItem[];
   numericSummary?: NumericSummaryItem[];
   timeSeries?: TimeSeriesPoint[];
+  correlations?: Correlation[];
   metadata?: Record<string, any>;
 };
 
-const DEFAULT_MAX_ROWS = 5000; // sample up to 5k rows for heavy computations
+// The canonical server-side analysis is full-dataset by default. Callers that
+// intentionally sample must pass maxRows; metadata then records that choice.
+const DEFAULT_MAX_ROWS = Number.MAX_SAFE_INTEGER;
 const DEFAULT_MAX_COLS = 100;
 const TRUNCATE_STRING_LEN = 150;
 
@@ -226,11 +230,13 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
       displayName: col,
       dataType,
       semanticType,
-      rowCount: rowCount,
+      // Column-level statistics are based on the analyzed rows, never mixed
+      // with the full-dataset denominator when an explicit sample is used.
+      rowCount: sampleRows.length,
       missingCount,
-      missingPct: Math.round((missingCount / Math.max(1, rowCount)) * 10000) / 100,
+      missingPct: Math.round((missingCount / Math.max(1, sampleRows.length)) * 10000) / 100,
       uniqueCount,
-      uniquePct: Math.round((uniqueCount / Math.max(1, rowCount)) * 10000) / 100,
+      uniquePct: Math.round((uniqueCount / Math.max(1, sampleRows.length)) * 10000) / 100,
       duplicateCount,
       min,
       max,
@@ -275,7 +281,7 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
 
   const categoricalBreakdown = columns
     .map((col) => ({ col, uniq: valueMap.get(col)?.size || 0 }))
-    .filter((x) => x.uniq >= 2 && x.uniq <= Math.max(50, Math.ceil(rowCount * 0.7)))
+    .filter((x) => x.uniq >= 2 && x.uniq <= Math.max(50, Math.ceil(sampleRows.length * 0.7)))
     .sort((a, b) => a.uniq - b.uniq)
     .slice(0, 8)
     .map((x) => ({
@@ -283,15 +289,15 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
       items: [...(valueMap.get(x.col)?.entries() || [])]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 15)
-        .map(([name, value]) => ({ name, value, pct: rowCount > 0 ? (value / rowCount) * 100 : 0 }))
+        .map(([name, value]) => ({ name, value, pct: sampleRows.length > 0 ? (value / sampleRows.length) * 100 : 0 }))
     }));
 
   const validNumericCols = [...numericMap.entries()].filter(([col, v]) => {
     const uniqCount = valueMap.get(col)?.size || 0;
-    const numericCoverage = rowCount > 0 ? v.count / rowCount : 0;
-    const isId = uniqCount === rowCount && v.max - v.min + 1 === rowCount;
+    const numericCoverage = sampleRows.length > 0 ? v.count / sampleRows.length : 0;
+    const isId = uniqCount === sampleRows.length && v.max - v.min + 1 === sampleRows.length;
     const hasVariance = v.max !== v.min;
-    const isProbablyYear = v.min > 1900 && v.max < 2100 && v.count === rowCount;
+    const isProbablyYear = v.min > 1900 && v.max < 2100 && v.count === sampleRows.length;
     return hasVariance && !isId && !isProbablyYear && numericCoverage >= 0.35;
   });
 
@@ -299,6 +305,34 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 8)
     .map(([column, v]) => ({ column, avg: v.sum / v.count, min: v.min, max: v.max, count: v.count, volatility: v.max - v.min }));
+
+  const correlations: Correlation[] = [];
+  const correlationColumns = numericSummary.map((item) => item.column).slice(0, 10);
+  for (let firstIndex = 0; firstIndex < correlationColumns.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < correlationColumns.length; secondIndex += 1) {
+      const first = correlationColumns[firstIndex];
+      const second = correlationColumns[secondIndex];
+      const paired = sampleRows
+        .map((row) => [parseNumeric(row[first]), parseNumeric(row[second])] as const)
+        .filter((pair): pair is readonly [number, number] => pair[0] !== null && pair[1] !== null);
+      if (paired.length < 3) continue;
+      const firstMean = paired.reduce((sum, pair) => sum + pair[0], 0) / paired.length;
+      const secondMean = paired.reduce((sum, pair) => sum + pair[1], 0) / paired.length;
+      const numerator = paired.reduce((sum, pair) => sum + (pair[0] - firstMean) * (pair[1] - secondMean), 0);
+      const firstVariance = paired.reduce((sum, pair) => sum + Math.pow(pair[0] - firstMean, 2), 0);
+      const secondVariance = paired.reduce((sum, pair) => sum + Math.pow(pair[1] - secondMean, 2), 0);
+      const denominator = Math.sqrt(firstVariance * secondVariance);
+      if (!denominator) continue;
+      const coefficient = numerator / denominator;
+      const absolute = Math.abs(coefficient);
+      correlations.push({
+        first,
+        second,
+        coefficient: Number(coefficient.toFixed(3)),
+        strength: absolute >= 0.7 ? "strong" : absolute >= 0.4 ? "moderate" : "weak"
+      });
+    }
+  }
 
   // Detect date candidates
   const dateCandidates = columns
@@ -357,10 +391,13 @@ export function createDataProfile(rows: Record<string, any>[], options?: { maxRo
     categoricalBreakdown,
     numericSummary,
     timeSeries,
+    correlations,
     metadata: {
       topDriver,
       isTemporal: timeSeries.length > 5,
-      sampleSize: rowCount
+      totalRows: rowCount,
+      analyzedRows: sampleRows.length,
+      sampled: sampleRows.length < rowCount
     }
   };
 

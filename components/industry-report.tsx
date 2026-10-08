@@ -30,6 +30,8 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis
@@ -39,7 +41,7 @@ const chartPalette = ["#2563eb", "#06b6d4", "#7c3aed", "#16a34a", "#f59e0b", "#e
 
 type Report = {
   version: number;
-  domain: { name: string; confidence: number; objective: string };
+  domain: { name: string; confidence: number; objective: string; matchedSignals?: string[] };
   executive: { headline: string; summary: string };
   kpis: Array<{ label: string; value: number; unit?: string; context?: string }>;
   charts: Array<{
@@ -51,9 +53,9 @@ type Report = {
     yColumn?: string;
     data: Array<Record<string, unknown>>;
   }>;
-  findings: string[];
-  risks: string[];
-  opportunities: string[];
+  findings: Array<{ title: string; description: string; evidence: string; importance: "high" | "medium" | "low" }>;
+  risks: Array<{ title: string; description: string; evidence: string; importance: "high" | "medium" | "low" }>;
+  opportunities: Array<{ title: string; description: string; evidence: string; importance: "high" | "medium" | "low" }>;
   recommendations: string[];
   dataQuality: { score: number; missingPct: number; duplicatePct: number; warnings: string[] };
   methodology: { rows: number; columns: number; numericMetrics: string[]; dimensions: string[]; dateColumn?: string };
@@ -104,10 +106,10 @@ export function IndustryReport({ insight, report }: Props) {
     generatedAt: insight.createdAt,
     executiveSummary: `${report.executive.headline} ${report.executive.summary}`,
     metrics: report.kpis.map((k) => ({ label: k.label, value: k.value })),
-    insights: report.findings,
+    insights: report.findings.map((finding) => `${finding.title}: ${finding.description} Evidence: ${finding.evidence}`),
     recommendations: report.recommendations,
-    risks: report.risks,
-    opportunities: report.opportunities,
+    risks: report.risks.map((finding) => `${finding.title}: ${finding.description} Evidence: ${finding.evidence}`),
+    opportunities: report.opportunities.map((finding) => `${finding.title}: ${finding.description} Evidence: ${finding.evidence}`),
     alerts: report.dataQuality.warnings
   }), [insight, report]);
 
@@ -159,6 +161,7 @@ export function IndustryReport({ insight, report }: Props) {
               <h2 className="max-w-4xl text-3xl font-black tracking-tight lg:text-5xl">{report.executive.headline}</h2>
               <p className="mt-4 max-w-4xl text-sm leading-7 text-blue-100 lg:text-base">{report.executive.summary}</p>
               <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-blue-200">Reporting objective • {report.domain.objective}</p>
+              {report.domain.matchedSignals?.length ? <p className="mt-2 text-xs text-blue-200">Detected from: {report.domain.matchedSignals.slice(0, 6).join(" • ")}</p> : null}
             </div>
             <div className="hidden h-24 w-24 items-center justify-center rounded-3xl border border-white/15 bg-white/10 lg:flex"><Sparkles size={40} /></div>
           </div>
@@ -194,10 +197,6 @@ export function IndustryReport({ insight, report }: Props) {
               </div>
             </Section>
           ))}
-          {report.charts.find((c) => c.type === "line") === undefined && (
-            <Section icon={TrendingUp} title="Performance Trend"><div className="flex h-[360px] items-center justify-center text-sm text-slate-400">No reliable time dimension was detected.</div></Section>
-          )}
-
           {report.charts.filter((c) => c.type === "bar").slice(0, 1).map((chart) => (
             <Section key={chart.id} icon={BarChart3} title={chart.title}>
               <p className="mb-4 text-xs text-slate-500">{chart.description}</p>
@@ -212,6 +211,18 @@ export function IndustryReport({ insight, report }: Props) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </Section>
+          ))}
+          {report.charts.filter((c) => c.type === "histogram").slice(0, 1).map((chart) => (
+            <Section key={chart.id} icon={BarChart3} title={chart.title}>
+              <p className="mb-4 text-xs text-slate-500">{chart.description}</p>
+              <div className="h-[360px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={chart.data}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis allowDecimals={false} tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="value" fill="#06b6d4" /></BarChart></ResponsiveContainer></div>
+            </Section>
+          ))}
+          {report.charts.filter((c) => c.type === "scatter").slice(0, 1).map((chart) => (
+            <Section key={chart.id} icon={TrendingUp} title={chart.title}>
+              <p className="mb-4 text-xs text-slate-500">{chart.description}</p>
+              <div className="h-[360px]"><ResponsiveContainer width="100%" height="100%"><ScatterChart><CartesianGrid /><XAxis type="number" dataKey="x" name={chart.xColumn} /><YAxis type="number" dataKey="y" name={chart.yColumn} /><Tooltip cursor={{ strokeDasharray: "3 3" }} /><Scatter data={chart.data} fill="#7c3aed" /></ScatterChart></ResponsiveContainer></div>
             </Section>
           ))}
         </div>
@@ -231,9 +242,9 @@ export function IndustryReport({ insight, report }: Props) {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Section icon={Lightbulb} title="Key Findings"><div className="space-y-4">{report.findings.map((item, i) => <div key={i} className="flex gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-600 dark:bg-blue-500/10">{i + 1}</span><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item}</p></div>)}</div></Section>
-          <Section icon={ShieldAlert} title="Risk & Control"><div className="space-y-3">{report.risks.map((item, i) => <div key={i} className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100"><AlertTriangle size={15} className="mb-2" />{item}</div>)}</div></Section>
-          <Section icon={TrendingUp} title="Opportunities"><div className="space-y-3">{report.opportunities.map((item, i) => <div key={i} className="rounded-2xl border border-emerald-200/70 bg-emerald-50/60 p-4 text-sm leading-6 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100"><CheckCircle2 size={15} className="mb-2" />{item}</div>)}</div></Section>
+          <Section icon={Lightbulb} title="Key Findings"><div className="space-y-4">{report.findings.map((item, i) => <div key={i} className="flex gap-3"><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-600 dark:bg-blue-500/10">{i + 1}</span><div><p className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.title}</p><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item.description}</p><p className="mt-1 text-xs text-slate-400">{item.evidence}</p></div></div>)}</div></Section>
+          <Section icon={ShieldAlert} title="Risk & Control"><div className="space-y-3">{report.risks.map((item, i) => <div key={i} className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100"><AlertTriangle size={15} className="mb-2" /><p className="font-bold">{item.title}</p><p>{item.description}</p><p className="mt-1 text-xs opacity-75">{item.evidence}</p></div>)}</div></Section>
+          <Section icon={TrendingUp} title="Opportunities"><div className="space-y-3">{report.opportunities.map((item, i) => <div key={i} className="rounded-2xl border border-emerald-200/70 bg-emerald-50/60 p-4 text-sm leading-6 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100"><CheckCircle2 size={15} className="mb-2" /><p className="font-bold">{item.title}</p><p>{item.description}</p><p className="mt-1 text-xs opacity-75">{item.evidence}</p></div>)}</div></Section>
         </div>
 
         <Section icon={Target} title="Recommended Action Plan">

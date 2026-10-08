@@ -51,13 +51,9 @@ export async function POST(
 
     if (!insight) return fail("Insight not found", 404);
 
-    // Prepare context: Use InsightJson (summary & profile) + tiny sample of raw data
+    // Queries receive only saved deterministic aggregates. Dataset cell values
+    // are untrusted and may contain PII or prompt-injection text.
     const dataContext = JSON.parse(insight.insightsJson || "{}");
-    
-    // SLIM CONTEXT: Be extremely aggressive to stay under Grq 6k free limit
-    const rawSample = Array.isArray(insight.file.rawPreview) 
-      ? insight.file.rawPreview.slice(0, 8) // Reduced from 50 to 8
-      : "No raw sample available";
 
     const profile = dataContext.profile || {};
     const slimProfile = {
@@ -87,14 +83,13 @@ ${JSON.stringify({
     trends: dataContext.summary?.trends?.slice(-5) // Only last 5 trends
   },
   profile: slimProfile,
-  sample: rawSample
 })}
 
 Instructions:
 1. Provide a direct, factual answer grounded in the available data.
-2. If the data is insufficient, clearly state what is missing.
-3. Mention one supporting evidence point.
-4. Provide one practical strategic recommendation.
+2. Do not calculate or invent values; if the aggregates cannot answer the question, clearly say so.
+3. If the data is insufficient, clearly state what deterministic query is needed.
+4. Mention one supporting evidence point.
 5. Keep answer under 90 words.
 
 Response format: Return ONLY valid JSON.

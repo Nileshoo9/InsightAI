@@ -19,8 +19,8 @@ async function getInsight(userId: string, id: string) {
     try { parsedJson = JSON.parse(insight.insightsJson); } catch { parsedJson = null; }
   }
 
-  const rawRows = Array.isArray(insight.file.rawPreview)
-    ? (insight.file.rawPreview as Record<string, unknown>[])
+  const rawRows = Array.isArray(insight.file.rawData)
+    ? (insight.file.rawData as Record<string, unknown>[])
     : [];
 
   // Reports created before industry-v1 are upgraded on read from the original raw schema.

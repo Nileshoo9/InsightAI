@@ -4,13 +4,13 @@ import { fail, ok } from "@/lib/http";
 import { requireAuth } from "@/lib/require-auth";
 import { isDatabaseUnavailableError } from "@/lib/db-errors";
 import {
-  mapRowsToRecords,
   parseCsvRows,
-  parseExcelRows
+  parseExcelRows,
+  parseJsonRows
 } from "@/lib/services/parser";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
+const ALLOWED_EXTENSIONS = [".csv", ".xls", ".xlsx", ".json"];
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._\-\s]/g, "_").trim();
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       "text/csv",
       "application/vnd.ms-excel",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/json",
       "application/octet-stream",
       ""
     ];
@@ -50,44 +51,32 @@ export async function POST(req: NextRequest) {
     }
 
     let rawRows;
-    if (ext === ".csv") {
+    if (ext === ".csv" || ext === ".json") {
       const text = await file.text();
-      rawRows = parseCsvRows(text);
+      rawRows = ext === ".json" ? parseJsonRows(text) : parseCsvRows(text);
     } else {
       const buffer = await file.arrayBuffer();
       rawRows = parseExcelRows(buffer);
     }
 
     if (!rawRows.length) return fail("No rows found in file", 400);
-    const records = mapRowsToRecords(rawRows);
     const safeName = sanitizeFileName(file.name);
 
     const createdFile = await prisma.file.create({
       data: {
         userId: session.userId,
         fileName: safeName,
-        rawPreview: rawRows.slice(0, 5000),
+        // Preview data is only for the browser. The full normalized dataset is
+        // persisted separately and is the only source for file-based analysis.
+        rawPreview: rawRows.slice(0, 500),
+        rawData: rawRows,
         rawRowCount: rawRows.length
       }
     });
 
-    if (records.length) {
-      await prisma.dataRecord.createMany({
-        data: records.map((r) => ({
-          fileId: createdFile.id,
-          date: r.date!,
-          revenue: r.revenue,
-          product: r.product,
-          quantity: r.quantity,
-          category: r.category,
-          customer: r.customer
-        }))
-      });
-    }
-
     return ok({
       file: createdFile,
-      recordCount: records.length,
+      recordCount: rawRows.length,
       rawRowCount: rawRows.length
     });
   } catch (error) {

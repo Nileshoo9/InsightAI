@@ -14,6 +14,8 @@ model User {
   createdAt DateTime  @default(now())
   files     File[]
   insights  Insight[]
+
+  @@index([createdAt])
 }
 
 model File {
@@ -22,10 +24,14 @@ model File {
   fileName   String
   uploadedAt DateTime    @default(now())
   rawPreview Json?
+  /// Complete normalized source rows. rawPreview is strictly a UI preview.
+  rawData     Json?
   rawRowCount Int        @default(0)
-  user       User        @relation(fields: [userId], references: [id])
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   records    DataRecord[]
   insights   Insight[]
+
+  @@index([userId, uploadedAt])
 }
 
 model DataRecord {
@@ -37,7 +43,9 @@ model DataRecord {
   quantity  Int
   category  String?
   customer  String?
-  file      File     @relation(fields: [fileId], references: [id])
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
 }
 
 model Insight {
@@ -45,8 +53,12 @@ model Insight {
   userId       String
   fileId       String
   insightsText String
+  description  String
   insightsJson String?
   createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id])
-  file         File     @relation(fields: [fileId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file         File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([fileId, createdAt])
 }

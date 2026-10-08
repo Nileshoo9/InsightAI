@@ -1,10 +1,21 @@
-import { DataRecord } from "@prisma/client";
 import { buildSummary } from "@/lib/services/analytics";
 import { generateGenericInsights, generateInsights, parseAnalysisIntent } from "@/lib/services/openai";
 import { runDataDiagnostics } from "@/lib/services/diagnostics";
-import { GenericProfile, ParsedRecord, AggregatedSummary } from "@/lib/types";
+import { GenericProfile, ParsedRecord, AggregatedSummary, InsightPayload } from "@/lib/types";
+import { createDataProfile } from "@/lib/services/profiler";
 
-function toParsedRecord(rows: DataRecord[]): ParsedRecord[] {
+type LegacyDataRecord = {
+  id?: string;
+  fileId?: string;
+  date: Date;
+  revenue: number;
+  product: string;
+  quantity: number;
+  category: string | null;
+  customer: string | null;
+};
+
+function toParsedRecord(rows: LegacyDataRecord[]): ParsedRecord[] {
   return rows.map((r) => ({
     ...r,
     date: r.date,
@@ -50,7 +61,7 @@ function parsePossibleDate(value: unknown): Date | null {
   return null;
 }
 
-export async function analyzeFromRecords(rows: DataRecord[], prompt?: string) {
+export async function analyzeFromRecords(rows: LegacyDataRecord[], prompt?: string) {
   let parsed = toParsedRecord(rows);
   
   // Extract dynamic metadata for intent parsing
@@ -82,6 +93,15 @@ export async function analyzeFromRecords(rows: DataRecord[], prompt?: string) {
 }
 
 function createGenericProfile(rows: Record<string, unknown>[]): GenericProfile {
+  const profile = createDataProfile(rows);
+  return {
+    ...profile,
+    columns: profile.columns.map((column) => column.name),
+    categoricalBreakdown: profile.categoricalBreakdown ?? [],
+    numericSummary: profile.numericSummary ?? [],
+    timeSeries: profile.timeSeries ?? []
+  };
+  /*
   const columns = rows.length ? Object.keys(rows[0]) : [];
   const rowCount = rows.length;
   
@@ -215,33 +235,62 @@ function createGenericProfile(rows: Record<string, unknown>[]): GenericProfile {
        isTemporal: timeSeries.length > 5,
        sampleSize: rowCount
     }
-  } as any;
+  } as any; */
 }
 
 
 export async function analyzeFromRawRows(rows: Record<string, unknown>[], prompt?: string) {
-  if (!rows.length) return { summary: null, insights: null, profile: createGenericProfile([]) };
+  if (!rows.length) return { summary: null, insights: null, profile: createDataProfile([]) };
   
-  const profile = createGenericProfile(rows);
-  const insights = await generateGenericInsights(rows, profile, prompt);
+  const profile = createDataProfile(rows);
+  const insightProfile: GenericProfile = {
+    rowCount: profile.rowCount,
+    columnCount: profile.columnCount,
+    columns: profile.columns.map((column) => column.name),
+    categoricalBreakdown: profile.categoricalBreakdown ?? [],
+    numericSummary: profile.numericSummary ?? [],
+    timeSeries: profile.timeSeries ?? []
+  };
   const diagnostics = runDataDiagnostics(rows);
   
   const summary: AggregatedSummary = {
     totalRecords: rows.length,
     uniqueValues: {},
-    topEntries: profile.categoricalBreakdown.map(c => ({ column: c.column, items: c.items })),
-    trends: profile.timeSeries,
+    topEntries: (profile.categoricalBreakdown ?? []).map(c => ({ column: c.column, items: c.items })),
+    trends: profile.timeSeries ?? [],
     anomalies: diagnostics.anomalies.map((reason, index) => ({
       label: `Data quality alert ${index + 1}`,
       value: 0,
       reason
     })),
     domainInfo: {
-      name: (insights as any).domainName || "Generic Dataset",
+      name: "Generic Dataset",
       description: `Automated analysis with ${diagnostics.score}% data health score.`,
-      suggestedKPIs: profile.numericSummary.map(n => n.column)
+      suggestedKPIs: (profile.numericSummary ?? []).map(n => n.column)
     }
   };
+
+  // AI is an optional explanation layer. It must never prevent the validated
+  // profile, deterministic report, or stored analysis from being generated.
+  let insights: InsightPayload & { domainColor?: string; domainEmoji?: string; domainName?: string };
+  try {
+    insights = await generateGenericInsights(rows, insightProfile, prompt);
+  } catch (error) {
+    console.warn("AI insight enrichment failed; returning deterministic analysis:", error);
+    insights = {
+      domainName: "General Analytics",
+      executiveSummary: `Deterministic analysis completed for ${rows.length.toLocaleString()} records. AI narrative enrichment is currently unavailable.`,
+      keyInsights: [
+        `${rows.length.toLocaleString()} records and ${profile.columnCount} columns were profiled.`,
+        ...(profile.numericSummary ?? []).slice(0, 2).map((metric) => `${metric.column}: average ${metric.avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}.`)
+      ],
+      recommendations: ["Use the validated KPIs and charts in this report; retry AI enrichment later if narrative explanation is required."],
+      risks: diagnostics.anomalies.slice(0, 4),
+      opportunities: ["Review the strongest numeric and categorical patterns identified by the deterministic analysis."],
+      alerts: ["AI narrative enrichment was unavailable; numerical results remain deterministic."],
+      trends: (profile.timeSeries ?? []).slice(-3).map((point) => `${point.label}: ${point.value.toLocaleString()}`)
+    };
+  }
 
   return { summary, insights, profile };
 }

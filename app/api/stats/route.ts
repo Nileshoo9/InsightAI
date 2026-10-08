@@ -9,12 +9,13 @@ export async function GET(req: NextRequest) {
     const { session, error } = await requireAuth(req);
     if (error || !session) return error || fail("Unauthorized", 401);
 
-    const [fileCount, insightCount, recordCount, lastFile, lastInsight] =
+    const [fileCount, insightCount, uploadedRows, lastFile, lastInsight] =
       await Promise.all([
         prisma.file.count({ where: { userId: session.userId } }),
         prisma.insight.count({ where: { userId: session.userId } }),
-        prisma.dataRecord.count({
-          where: { file: { userId: session.userId } }
+        prisma.file.aggregate({
+          where: { userId: session.userId },
+          _sum: { rawRowCount: true }
         }),
         prisma.file.findFirst({
           where: { userId: session.userId },
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     return ok({
       fileCount,
       insightCount,
-      recordCount,
+      recordCount: uploadedRows._sum.rawRowCount ?? 0,
       lastUpload: lastFile?.uploadedAt || null,
       lastAnalysis: lastInsight?.createdAt || null
     });

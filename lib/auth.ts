@@ -5,7 +5,13 @@ import { NextRequest } from "next/server";
 import { AUTH_COOKIE } from "@/lib/constants";
 
 const encoder = new TextEncoder();
-const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET must be configured with at least 32 characters");
+  }
+  return secret;
+}
 
 type SessionToken = {
   userId: string;
@@ -25,12 +31,12 @@ export async function signToken(payload: SessionToken) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encoder.encode(jwtSecret));
+    .sign(encoder.encode(getJwtSecret()));
 }
 
 export async function verifyToken(token: string): Promise<SessionToken | null> {
   try {
-    const { payload } = await jwtVerify(token, encoder.encode(jwtSecret));
+    const { payload } = await jwtVerify(token, encoder.encode(getJwtSecret()));
     if (typeof payload.userId !== "string" || typeof payload.email !== "string") {
       return null;
     }

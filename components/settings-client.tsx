@@ -36,7 +36,16 @@ export function SettingsClient({ userEmail }: { userEmail?: string }) {
     }
     setSavingPassword(true);
     try {
-      await new Promise((r) => setTimeout(r, 1000));
+      const response = await fetch("/api/auth/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setPwError(payload?.error || "Unable to update password");
+        return;
+      }
       setPasswordSuccess(true);
       setCurrentPw("");
       setNewPw("");
