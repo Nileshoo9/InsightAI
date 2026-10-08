@@ -1,0 +1,9 @@
+student_id,student_name,subject,attendance,math_score,biology_score,gender,semester
+S001,Aditi,Math,96,92,81,F,Fall
+S002,Rahul,Biology,78,69,88,M,Fall
+S003,Meera,Math,94,90,76,F,Spring
+S004,Arjun,Biology,70,60,66,M,Spring
+S005,Sneha,Math,98,94,85,F,Fall
+S006,Varun,Biology,65,58,72,M,Spring
+S007,Priya,Math,92,88,79,F,Fall
+S008,Anil,Biology,82,74,80,M,Spring

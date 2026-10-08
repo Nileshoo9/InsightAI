@@ -21,17 +21,17 @@ export interface DomainDetectionResult {
 }
 
 const DOMAIN_RULES: Record<IndustryDomain, string[]> = {
-  "Sales & Retail": ["sales", "revenue", "order", "product", "sku", "quantity", "qty", "cart", "discount", "unit_price", "selling_price"],
-  "Finance & Banking": ["account", "balance", "transaction", "debit", "credit", "loan", "interest", "payment", "portfolio", "investment", "profit", "expense", "income"],
-  Healthcare: ["patient", "diagnosis", "symptom", "disease", "treatment", "doctor", "physician", "hospital", "clinic", "medication", "admission", "discharge", "blood", "heart_rate"],
-  Education: ["student", "studentid", "student_name", "grade", "marks", "score", "math", "mathematics", "biology", "physics", "chemistry", "english", "gpa", "cgpa", "course", "subject", "teacher", "attendance", "absence", "exam", "pass", "fail", "semester", "term", "class", "faculty", "department", "school", "college", "university", "academic", "enrollment"],
-  "Human Resources": ["employee", "salary", "designation", "job_title", "hire_date", "termination", "attrition", "performance", "manager", "tenure", "leave"],
-  "Marketing & Customer": ["campaign", "lead", "conversion", "click", "impression", "ctr", "engagement", "channel", "customer", "segment", "churn", "retention"],
-  "Logistics & Supply Chain": ["shipment", "tracking", "delivery", "carrier", "warehouse", "supplier", "freight", "route", "origin", "destination", "dispatch", "inventory", "stock"],
-  "Manufacturing & Operations": ["machine", "production", "defect", "downtime", "quality", "factory", "batch", "cycle", "output", "maintenance", "work_order"],
-  "IoT & Sensors": ["sensor", "device", "temperature", "humidity", "pressure", "voltage", "reading", "telemetry", "accelerometer", "battery"],
-  "Media & Entertainment": ["movie", "film", "show", "episode", "stream", "watch", "view", "rating", "genre", "duration", "subscriber"],
-  "Real Estate": ["property", "listing", "bedroom", "bathroom", "rent", "mortgage", "square_feet", "area", "agent", "listing_price"],
+  "Sales & Retail": ["sales", "revenue", "order", "product", "sku", "quantity", "qty", "cart", "discount", "unit_price", "selling_price", "purchase", "orders_total", "net_sales", "revenue_total"],
+  "Finance & Banking": ["account", "balance", "transaction", "debit", "credit", "loan", "interest", "payment", "portfolio", "investment", "profit", "expense", "income", "cashflow", "cash_flow", "ledger", "liquidity", "liquidity_ratio", "invoice", "invoice_total", "payroll", "working_capital", "debt_coverage", "net_income", "profit_margin", "financial", "bank", "risk_score", "balance_sheet"],
+  Healthcare: ["patient", "diagnosis", "symptom", "disease", "treatment", "doctor", "physician", "hospital", "clinic", "medication", "admission", "discharge", "blood", "heart_rate", "provider", "encounter", "care_plan", "readmission", "outcome", "clinical", "episode", "procedure"],
+  Education: ["student", "studentid", "student_name", "grade", "marks", "score", "math", "mathematics", "biology", "physics", "chemistry", "english", "gpa", "cgpa", "course", "subject", "teacher", "attendance", "absence", "exam", "pass", "fail", "semester", "term", "class", "faculty", "department", "school", "college", "university", "academic", "enrollment", "programme", "course_name", "attendance_rate", "exam_score"],
+  "Human Resources": ["employee", "salary", "designation", "job_title", "hire_date", "termination", "attrition", "performance", "manager", "tenure", "leave", "bonus", "benefits", "headcount", "payroll", "compensation", "team", "workforce", "retention"],
+  "Marketing & Customer": ["campaign", "lead", "conversion", "click", "impression", "ctr", "engagement", "channel", "customer", "segment", "churn", "retention", "acquisition", "lifetime_value", "audience", "marketing"],
+  "Logistics & Supply Chain": ["shipment", "tracking", "delivery", "carrier", "warehouse", "supplier", "freight", "route", "origin", "destination", "dispatch", "inventory", "stock", "fulfillment", "warehouse_movement", "on_time_delivery", "transfer"],
+  "Manufacturing & Operations": ["machine", "production", "defect", "downtime", "quality", "factory", "batch", "cycle", "output", "maintenance", "work_order", "yield", "throughput", "line", "efficiency"],
+  "IoT & Sensors": ["sensor", "device", "temperature", "humidity", "pressure", "voltage", "reading", "telemetry", "accelerometer", "battery", "signal", "reading_value", "device_id"],
+  "Media & Entertainment": ["movie", "film", "show", "episode", "stream", "watch", "view", "rating", "genre", "duration", "subscriber", "playlist", "channel", "audience"],
+  "Real Estate": ["property", "listing", "bedroom", "bathroom", "rent", "mortgage", "square_feet", "area", "agent", "listing_price", "location", "occupancy", "square_footage"],
   "General Analytics": []
 };
 
@@ -40,16 +40,23 @@ const GENERIC_STOP_WORDS = new Set([
 ]);
 
 function normalize(value: unknown): string {
-  return String(value ?? "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return String(value ?? "").toLowerCase().trim().replace(/[\s_-]+/g, " ");
+}
+
+function compact(value: string) {
+  return value.replace(/\s+/g, "");
 }
 
 function tokenScore(column: unknown, keywords: readonly unknown[]) {
   const c = normalize(column);
+  const compactColumn = compact(c);
+
   return keywords.reduce<number>((score, keyword) => {
     const k = normalize(keyword);
     if (!k) return score;
-    if (c === k) return score + 5;
-    if (c.includes(k)) return score + 2;
+    const compactKeyword = compact(k);
+    if (c === k || compactColumn === compactKeyword) return score + 5;
+    if (c.includes(k) || compactColumn.includes(compactKeyword)) return score + 2;
     return score;
   }, 0);
 }

@@ -1,0 +1,7 @@
+ledger_id,account_name,month,cashflow,liquidity_ratio,working_capital,debt_coverage,profit_margin
+L001,Operations,Jan,240000,1.8,460000,2.4,12.5
+L002,Operations,Feb,265000,1.9,490000,2.7,13.1
+L003,Operations,Mar,235000,1.7,430000,2.3,11.8
+L004,Operations,Apr,280000,2.1,520000,2.9,14.4
+L005,Operations,May,290000,2.2,550000,3.1,15.2
+L006,Operations,Jun,275000,2.0,505000,2.8,14.1

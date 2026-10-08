@@ -30,6 +30,14 @@ describe("industry report engine", () => {
     expect(detectIndustryDomain(Object.keys(rows[0]), rows).domain).toBe("Healthcare");
   });
 
+  it("detects finance data from cashflow and ledger terminology", () => {
+    const rows = [
+      { ledger_id: "L1", cashflow: 15000, liquidity_ratio: 1.8, working_capital: 24000, debt_coverage: 2.1 },
+      { ledger_id: "L2", cashflow: 18000, liquidity_ratio: 1.9, working_capital: 26000, debt_coverage: 2.4 }
+    ];
+    expect(detectIndustryDomain(Object.keys(rows[0]), rows).domain).toBe("Finance & Banking");
+  });
+
   it("builds a non-sales report from an arbitrary schema", () => {
     const rows = [
       { student_id: 1, subject: "Math", attendance: 92, marks: 88 },

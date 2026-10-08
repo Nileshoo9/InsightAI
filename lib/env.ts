@@ -13,6 +13,12 @@ function normalizeDatabaseUrl(url: string) {
     if (parsed.password) {
       parsed.password = encodeURIComponent(decodeURIComponent(parsed.password));
     }
+
+    const search = new URLSearchParams(parsed.search);
+    if (!search.has("connection_limit")) search.set("connection_limit", "5");
+    if (!search.has("pool_timeout")) search.set("pool_timeout", "15");
+    parsed.search = search.toString();
+
     return parsed.toString();
   } catch {
     return url;

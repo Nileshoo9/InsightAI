@@ -145,7 +145,46 @@ AI_PROVIDER="gemini"
 
 Never commit real credentials. Never expose them to client-side code.
 
-## 12. Testing
+## 12. Viva Demo Walkthrough
+
+Use one of the included demo datasets to show the full pipeline in a short, convincing live session.
+
+### Demo Dataset A: Education analytics
+Upload the file `demo-data/education-demo.csv`.
+
+Expected behavior:
+- the domain detector should classify the dataset as Education
+- KPI cards should highlight average attendance, average math score, average biology score, and student count
+- charts should include score distribution or grouped subject performance
+- the generated insights should explain attendance and academic variation without claiming causation
+
+Suggested viva script:
+
+> "This dataset is not a sales file. The system reads the schema signals, detects academic columns, and chooses education-appropriate KPIs instead of default revenue metrics. The analytics remain deterministic and the AI explanation simply narrates the evidence."
+
+### Demo Dataset B: Finance analytics
+Upload the file `demo-data/finance-demo.csv`.
+
+Expected behavior:
+- the domain detector should classify the dataset as Finance & Banking
+- KPIs should focus on cashflow, working capital, debt coverage, and profit margin
+- the report should avoid sales-only language such as customer or revenue unless those fields are actually present
+
+Suggested viva script:
+
+> "The project is designed for general dataset analysis. It does not assume every uploaded file is a sales record; it reads the actual columns, detects the likely domain, and selects decisions that match the dataset structure."
+
+### Full demonstration flow
+1. Upload a CSV file.
+2. Wait for the parser and cleaner to normalize the rows.
+3. Review the generated profile and quality diagnostics.
+4. Observe the detected domain and recommended KPI set.
+5. Open the report/dashboard view and explain the fundamental findings.
+6. Optionally show the AI explanation layer as a supporting narrative rather than the source of truth.
+
+This flow is especially strong for viva evaluation because it demonstrates both technical depth and explainability.
+
+## 13. Testing
 
 ```bash
 npm test
@@ -153,14 +192,14 @@ npm test
 
 The project includes tests covering parsing, diagnostics, profile generation, domain detection, report construction, and architecture guardrails.
 
-## 13. Limitations
+## 14. Limitations
 
 - large datasets should be managed with explicit sample documentation when needed
 - AI-generated explanations are support layers, not calculation engines
 - complex causal claims require a dedicated causal model or experimental design
 - highly unstructured or messy files may require manual cleanup before perfect results
 
-## 14. Future Scope
+## 15. Future Scope
 
 - advanced predictive modelling
 - more domain modules
@@ -169,7 +208,7 @@ The project includes tests covering parsing, diagnostics, profile generation, do
 - improved anomaly detection and automated remediation
 - richer NLQ validation with field-level schema understanding
 
-## 15. Technical Documentation Summary
+## 16. Technical Documentation Summary
 
 This project addresses a real problem: ordinary dataset analysis is usually fragmented across manual cleaning, visualization, and interpretation. InsightAI consolidates those stages into a single explainable workflow.
 
